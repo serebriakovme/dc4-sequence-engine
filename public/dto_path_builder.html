@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DTO path builder</title>
+<style>
+:root{--bg:#f4f4f1;--panel:#fff;--ink:#1c1f23;--mute:#667;--line:#d8d8d2;--acc:#0a5ca8;--bad:#b3261e;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15171a;--panel:#1e2125;--ink:#e8e8e4;--mute:#9aa;--line:#33373d;--acc:#6fb1ee;--bad:#f2837c}}
+:root[data-theme="dark"]{--bg:#15171a;--panel:#1e2125;--ink:#e8e8e4;--mute:#9aa;--line:#33373d;--acc:#6fb1ee;--bad:#f2837c}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Arial,sans-serif}
+main{max-width:1200px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:0 0 8px}
+p{margin:0 0 8px;color:var(--mute)}
+section{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;margin-bottom:14px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th{text-align:left;font-weight:600;color:var(--mute);padding:2px 6px 6px}
+td{padding:3px 4px}
+input,select,button{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:4px 6px}
+input[type=number]{width:72px}input[type=text]{width:84px}
+button{cursor:pointer}button.p{background:var(--acc);border-color:var(--acc);color:#fff}
+:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.bad{color:var(--bad)}
+#out{height:180px;width:100%;font:12px/1.3 ui-monospace,Consolas,monospace;resize:vertical}
+#sc{height:min(70vh,640px);overflow:auto;border:1px solid var(--line);border-radius:4px;background:var(--bg)}
+#sp{position:relative}
+#cv{position:sticky;top:0;left:0;display:block}
+</style></head><body><main>
+<h1>DTO path builder</h1>
+<p>Set the passes in the order the truck drives them. The tool builds the location sequence and marks it on your layout map.</p>
+
+<section><h2>1. Passes</h2>
+<div class="scroll"><table id="t"><thead><tr><th>On</th><th>Left rack</th><th>Right rack</th><th>From bay</th><th>To bay</th><th>Levels</th><th>Bays</th><th></th></tr></thead><tbody></tbody></table></div>
+<div class="bar">
+<button id="add">Add pass</button>
+<label>Levels A to <select id="lv"></select></label>
+<label>Order within a bay <select id="mo"><option value="alt">Alternate left/right per level</option><option value="side">All left levels, then all right levels</option></select></label>
+</div>
+<p style="margin-top:8px">Leave one rack blank for a one-sided pass. For odd/even aisles like AV, use one pass for evens and one for odds.</p>
+</section>
+
+<section><h2>2. Sequence</h2>
+<div id="sum"></div>
+<textarea id="out" readonly aria-label="Generated sequence"></textarea>
+<div class="bar"><button class="p" id="csv">Download CSV</button><button id="txt">Download TXT</button><button id="cp">Copy list</button></div>
+</section>
+
+<section><h2>3. Layout map</h2>
+<div class="bar" style="margin:0 0 8px"><input type="file" id="f" accept=".xlsx,.xlsm,.xls" aria-label="Layout map file">
+<label><input type="checkbox" id="sn"> Show sequence number instead of location</label>
+<span id="hv" style="color:var(--mute)">Load map.xlsx to see the path. Blue to orange runs from first to last stop; red cells look like locations but are not in the path.</span></div>
+<div id="sc"><div id="sp"><canvas id="cv"></canvas></div></div>
+</section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+let rows=[{on:1,l:'E16',r:'E17',from:1,to:64,ld:'up',par:'all'},{on:1,l:'E15',r:'E14',from:64,to:1,ld:'down',par:'all'},{on:0,l:'',r:'AV',from:2,to:64,ld:'up',par:'even'},{on:0,l:'AV',r:'',from:63,to:1,ld:'up',par:'odd'}];
+let path=[],seq=new Map(),grid=[],cw=46,ch=13;
+const lvSel=$('#lv');[...'ABCDEFGHIJ'].forEach((c,i)=>lvSel.add(new Option(c,i+1)));lvSel.value=6;
+try{const s=JSON.parse(localStorage.getItem('dto1')||'null');if(s){rows=s.rows;lvSel.value=s.lv;$('#mo').value=s.mo}}catch(e){}
+function save(){try{localStorage.setItem('dto1',JSON.stringify({rows,lv:lvSel.value,mo:$('#mo').value}))}catch(e){}}
+function build(){
+ const L=[...'ABCDEFGHIJ'].slice(0,+lvSel.value),out=[],alt=$('#mo').value==='alt';
+ for(const r of rows){if(!r.on)continue;
+  const s=Math.sign(r.to-r.from)||1,lv=r.ld==='up'?L:[...L].reverse(),sides=[r.l,r.r].filter(Boolean);
+  for(let b=+r.from;b!==+r.to+s;b+=s){
+   if(r.par==='even'&&b%2)continue;if(r.par==='odd'&&!(b%2))continue;
+   const bb=String(b).padStart(3,'0');
+   if(alt){for(const x of lv)for(const p of sides)out.push(p+bb+x)}
+   else for(const p of sides)for(const x of lv)out.push(p+bb+x)}}
+ return out}
+const isLoc=v=>/^[A-Z]{1,3}\d{3,}[A-Z]$/.test(v);
+function refresh(){
+ path=build();seq=new Map();let dup=0;
+ path.forEach((c,i)=>{if(seq.has(c))dup++;else seq.set(c,i+1)});
+ $('#out').value=path.map((c,i)=>(i+1)+'\t'+c).join('\n');
+ let h=path.length?`<b>${path.length}</b> locations. First <b>${path[0]}</b>, last <b>${path[path.length-1]}</b>.`:'No locations yet.';
+ if(dup)h+=` <span class="bad">${dup} duplicate(s) in the path.</span>`;
+ if(grid.length){const inMap=new Set();grid.forEach(r=>r&&r.forEach(v=>{if(v!=null)inMap.add(String(v))}));
+  const miss=path.filter(c=>!inMap.has(c)),unv=[...inMap].filter(v=>isLoc(v)&&!seq.has(v));
+  h+=`<br>Not on the map: <b class="${miss.length?'bad':''}">${miss.length}</b>${miss.length?' ('+miss.slice(0,8).join(', ')+(miss.length>8?'…':'')+')':''}. On the map but not in the path: <b class="${unv.length?'bad':''}">${unv.length}</b>${unv.length?' ('+unv.slice(0,8).join(', ')+(unv.length>8?'…':'')+')':''}.`}
+ $('#sum').innerHTML=h;save();draw()}
+function rowsUI(){
+ const tb=$('#t tbody');tb.innerHTML='';
+ rows.forEach((r,i)=>{const tr=tb.insertRow();
+  tr.innerHTML=`<td><input type="checkbox" data-k="on" ${r.on?'checked':''}></td><td><input type="text" data-k="l" value="${r.l}"></td><td><input type="text" data-k="r" value="${r.r}"></td><td><input type="number" data-k="from" value="${r.from}"></td><td><input type="number" data-k="to" value="${r.to}"></td>
+  <td><select data-k="ld"><option value="up">A to top</option><option value="down">Top to A</option></select></td>
+  <td><select data-k="par"><option value="all">All</option><option value="even">Even only</option><option value="odd">Odd only</option></select></td>
+  <td><button data-a="u" aria-label="Move up">&uarr;</button> <button data-a="d" aria-label="Move down">&darr;</button> <button data-a="x" aria-label="Delete pass">Delete</button></td>`;
+  tr.querySelector('[data-k=ld]').value=r.ld;tr.querySelector('[data-k=par]').value=r.par;
+  tr.oninput=e=>{const k=e.target.dataset.k;if(!k)return;const v=e.target.type==='checkbox'?+e.target.checked:e.target.type==='number'?+e.target.value:e.target.value.trim().toUpperCase();rows[i][k]=v;refresh()};
+  tr.onclick=e=>{const a=e.target.dataset.a;if(!a)return;
+   if(a==='x')rows.splice(i,1);else{const j=a==='u'?i-1:i+1;if(j<0||j>=rows.length)return;[rows[i],rows[j]]=[rows[j],rows[i]]}
+   rowsUI();refresh()}})}
+$('#add').onclick=()=>{rows.push({on:1,l:'',r:'',from:1,to:64,ld:'up',par:'all'});rowsUI();refresh()};
+lvSel.onchange=$('#mo').onchange=refresh;
+function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
+$('#csv').onclick=()=>dl('dto_path.csv','Seq,Location\n'+path.map((c,i)=>(i+1)+','+c).join('\n'),'text/csv');
+$('#txt').onclick=()=>dl('dto_path.txt',path.join('\n'),'text/plain');
+$('#cp').onclick=async()=>{try{await navigator.clipboard.writeText(path.join('\n'));$('#cp').textContent='Copied'}catch(e){$('#out').select();$('#cp').textContent='Select and copy'}setTimeout(()=>$('#cp').textContent='Copy list',1500)};
+// map
+const cv=$('#cv'),sc=$('#sc'),sp=$('#sp');
+$('#f').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+ const wb=XLSX.read(await f.arrayBuffer());
+ const name=wb.SheetNames.includes('New_layout')?'New_layout':wb.SheetNames[0];
+ grid=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:null});
+ const mc=Math.max(0,...grid.map(r=>r.length));
+ sp.style.width=mc*cw+'px';sp.style.height=grid.length*ch+'px';
+ $('#hv').textContent='Map loaded from sheet "'+name+'". Hover a cell for its sequence number.';refresh()};
+function draw(){
+ const w=sc.clientWidth,h=sc.clientHeight,d=devicePixelRatio||1;
+ cv.width=w*d;cv.height=h*d;cv.style.width=w+'px';cv.style.height=h+'px';
+ const x=cv.getContext('2d');x.scale(d,d);x.font='8px system-ui,sans-serif';x.textBaseline='middle';
+ const ink=getComputedStyle(document.body).color,tot=path.length||1,sn=$('#sn').checked;
+ const r0=Math.floor(sc.scrollTop/ch),c0=Math.floor(sc.scrollLeft/cw);
+ for(let r=r0;r<=r0+h/ch+1&&r<grid.length;r++){const row=grid[r];if(!row)continue;
+  for(let c=c0;c<=c0+w/cw+1&&c<row.length;c++){const v=row[c];if(v==null)continue;
+   const s=String(v),n=seq.get(s),px=c*cw-sc.scrollLeft,py=r*ch-sc.scrollTop;
+   if(n){x.fillStyle=`hsl(${210-175*n/tot},75%,72%)`;x.fillRect(px,py,cw-1,ch-1);x.fillStyle='#111'}
+   else if(isLoc(s)){x.fillStyle='#e9b8b4';x.fillRect(px,py,cw-1,ch-1);x.fillStyle='#111'}
+   else x.fillStyle=ink;
+   x.fillText(sn&&n?String(n):s,px+2,py+ch/2,cw-3)}}}
+sc.onscroll=()=>requestAnimationFrame(draw);addEventListener('resize',draw);$('#sn').onchange=draw;
+sc.onmousemove=e=>{if(!grid.length)return;const b=sc.getBoundingClientRect(),c=Math.floor((e.clientX-b.left+sc.scrollLeft)/cw),r=Math.floor((e.clientY-b.top+sc.scrollTop)/ch),v=grid[r]&&grid[r][c];
+ if(v!=null){const n=seq.get(String(v));$('#hv').textContent=v+(n?'  |  stop '+n+' of '+path.length:isLoc(String(v))?'  |  not in path':'')}};
+rowsUI();refresh();
+</script></body></html>

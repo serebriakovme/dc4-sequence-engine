@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Location Generator + Sequence Planner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Work+Sans:wght@300;400;600&display=swap');
+
+        :root {
+            --primary: #1a1a2e;
+            --secondary: #16213e;
+            --accent: #0f3460;
+            --highlight: #e94560;
+            --text: #eaeaea;
+            --text-muted: #a8a8a8;
+            --border: #2d3748;
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --danger: #fb7185;
+            --panel-bg: rgba(255,255,255,0.03);
+            --input-bg: rgba(255,255,255,0.05);
+            --row-hover: rgba(255,255,255,0.05);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Work Sans', sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 1.5rem;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 2rem; }
+        h1 {
+            font-family: 'Space Mono', monospace;
+            font-size: 2.3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--highlight), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.4rem;
+        }
+        .subtitle { font-size: 1rem; color: var(--text-muted); font-weight: 300; }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1.08fr 1.42fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+        .panel-header {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.15rem;
+            margin-bottom: 1.2rem;
+            color: var(--highlight);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .panel-header::before { content: '▸'; color: var(--success); }
+        .config-section { margin-bottom: 1.5rem; }
+        .section-title {
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 0.9rem;
+            font-weight: 600;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.8rem;
+            padding: 1rem;
+            background: rgba(233, 69, 96, 0.05);
+            border: 1px solid rgba(233, 69, 96, 0.2);
+            border-radius: 8px;
+        }
+        .settings-grid.sequence {
+            background: rgba(74, 222, 128, 0.05);
+            border-color: rgba(74, 222, 128, 0.2);
+        }
+        .setting-field { display: flex; flex-direction: column; gap: 0.45rem; }
+        .setting-field label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--highlight);
+            font-weight: 600;
+        }
+        .settings-grid.sequence .setting-field label { color: var(--success); }
+
+        label { font-size: 0.875rem; color: var(--text-muted); font-weight: 400; }
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 0.62rem;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.84rem;
+            transition: all 0.2s ease;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--highlight); background: rgba(255, 255, 255, 0.08); }
+        select option { background: var(--secondary); color: var(--text); }
+
+        .aisle-row {
+            display: grid;
+            grid-template-columns: 90px 90px 180px 95px 110px 120px auto;
+            gap: 0.65rem;
+            align-items: end;
+            margin-bottom: 0.8rem;
+            padding: 0.9rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .aisle-row:hover { background: var(--row-hover); border-color: var(--accent); }
+        .aisle-row small { color: var(--text-muted); font-size: 0.7rem; display: block; margin-top: 0.2rem; }
+
+        .btn {
+            padding: 0.7rem 1.1rem;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn-primary { background: var(--highlight); color: white; }
+        .btn-primary:hover { background: #d63850; transform: translateY(-2px); }
+        .btn-secondary { background: rgba(255, 255, 255, 0.1); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.15); }
+        .btn-success { background: var(--success); color: var(--primary); }
+        .btn-success:hover { background: #22c55e; transform: translateY(-2px); }
+        .btn-danger { background: transparent; color: var(--highlight); border: 1px solid var(--highlight); padding: 0.6rem 0.7rem; }
+        .btn-danger:hover { background: var(--highlight); color: white; }
+
+        .actions { display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; }
+        .actions .btn { flex: 1 1 180px; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.8rem;
+            margin-bottom: 1rem;
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .stat-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 0.4rem;
+        }
+        .stat-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .path-box, .summary-box {
+            background: rgba(0,0,0,0.22);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        .path-box h3, .summary-box h3 {
+            font-size: 0.9rem;
+            margin-bottom: 0.55rem;
+            color: var(--success);
+            font-family: 'Space Mono', monospace;
+        }
+        .path-box p, .summary-box p, .summary-box li {
+            color: var(--text-muted);
+            font-size: 0.86rem;
+            line-height: 1.45;
+        }
+        .path-chip-wrap { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.7rem; }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.38rem 0.56rem;
+            border-radius: 999px;
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            color: var(--text);
+            font-size: 0.72rem;
+            font-family: 'Space Mono', monospace;
+        }
+        .chip.locked { background: rgba(251,113,133,0.1); border-color: rgba(251,113,133,0.25); }
+
+        .preview-container {
+            max-height: 640px;
+            overflow: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 0.75rem;
+        }
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.78rem;
+        }
+        .preview-table thead {
+            position: sticky;
+            top: 0;
+            background: var(--accent);
+            z-index: 10;
+        }
+        .preview-table th {
+            padding: 0.68rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text);
+            border-bottom: 2px solid var(--highlight);
+            white-space: nowrap;
+        }
+        .preview-table td {
+            padding: 0.52rem 0.68rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            white-space: nowrap;
+        }
+        .preview-table tbody tr:hover { background: rgba(255, 255, 255, 0.05); }
+        .locked-row { background: rgba(251, 113, 133, 0.08); }
+        .seq-cell { color: var(--success); font-weight: 700; }
+
+        .hint { color: var(--text-muted); font-size: 0.78rem; line-height: 1.4; margin-top: 0.45rem; }
+        .add-aisle-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+
+        @media (max-width: 1200px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 1024px) {
+            .settings-grid, .settings-grid.sequence { grid-template-columns: 1fr; }
+            .aisle-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Warehouse Location Generator</h1>
+            <p class="subtitle">Generate location master data with lock-position rules and sequence path planning</p>
+        </header>
+
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-header">Configuration</div>
+
+                <div class="config-section">
+                    <div class="section-title">Global Location Settings</div>
+                    <div class="settings-grid">
+                        <div class="setting-field">
+                            <label>Site ID</label>
+                            <input type="text" id="siteId" placeholder="e.g., DC4, WH01">
+                        </div>
+                        <div class="setting-field">
+                            <label>Default Lock Status</label>
+                            <select id="lockStatus">
+                                <option value="Unlock">Unlock</option>
+                                <option value="Locked">Locked</option>
+                                <option value="InLocked">InLocked</option>
+                                <option value="OutLocked">OutLocked</option>
+                            </select>
+                        </div>
+                        <div class="setting-field">
+                            <label>Zone 1</label>
+                            <input type="text" id="zone1" placeholder="e.g., PICK, RESERVE">
+                        </div>
+                        <div class="setting-field">
+                            <label>Subzone 1</label>
+                            <input type="text" id="subzone1" placeholder="e.g., FAST, SLOW">
+                        </div>
+                        <div class="setting-field">
+                            <label>Work Zone</label>
+                            <input type="text" id="workZone" placeholder="e.g., A1, B2">
+                        </div>
+                        <div class="setting-field">
+                            <label>Loc Type</label>
+                            <select id="locType">
+                                <option value="">-- Not Set --</option>
+                                <option value="Bin">Bin</option>
+                                <option value="Bulk">Bulk</option>
+                                <option value="Tag FIFO">Tag FIFO</option>
+                                <option value="Tag LIFO">Tag LIFO</option>
+                                <option value="TAG Operator">TAG Operator</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <div class="section-title">Sequence Settings</div>
+                    <div class="settings-grid sequence">
+                        <div class="setting-field">
+                            <label>Sequence Start</label>
+                            <input type="number" id="sequenceStart" value="5" min="0" step="1">
+                        </div>
+                        <div class="setting-field">
+                            <label>Sequence Step</label>
+                            <input type="number" id="sequenceStep" value="5" min="1" step="1">
+                        </div>
+                        <div class="setting-field">
+                            <label>Start Aisle</label>
+                            <input type="text" id="startAisle" value="" placeholder="e.g. A01">
+                        </div>
+                        <div class="setting-field">
+                            <label>Corridor Direction</label>
+                            <select id="corridorDirection">
+                                <option value="desc">High → Low aisle numbers</option>
+                                <option value="asc">Low → High aisle numbers</option>
+                            </select>
+                        </div>
+                        <div class="setting-field">
+                            <label>First Pair Bay Direction</label>
+                            <select id="firstPairBayDirection">
+                                <option value="asc">Bay 1 → Last bay</option>
+                                <option value="desc">Last bay → Bay 1</option>
+                            </select>
+                        </div>
+                        <div class="setting-field">
+                            <label>Next Pair Transition</label>
+                            <select id="pairTransition">
+                                <option value="uturn">U-turn on next aisle pair</option>
+                                <option value="same">Keep same bay direction</option>
+                            </select>
+                        </div>
+                        <div class="setting-field">
+                            <label>Within Bay Order</label>
+                            <select id="withinBayPath">
+                                <option value="aisle-level-position">Aisle → Level → Position</option>
+                                <option value="aisle-position-level">Aisle → Position → Level</option>
+                            </select>
+                        </div>
+                        <div class="setting-field">
+                            <label>Level Direction</label>
+                            <select id="levelDirection">
+                                <option value="asc">A → Z</option>
+                                <option value="desc">Z → A</option>
+                            </select>
+                        </div>
+                        <div class="setting-field">
+                            <label>Position Direction</label>
+                            <select id="positionDirection">
+                                <option value="asc">1 → Last position</option>
+                                <option value="desc">Last position → 1</option>
+                            </select>
+                        </div>
+                        <div class="setting-field">
+                            <label>Locked Position Rule</label>
+                            <input type="text" id="globalLockedPositions" placeholder="e.g., 3 or 2,4">
+                        </div>
+                    </div>
+                    <div class="hint">Paired-corridor route uses the aisle names you enter manually. Start from the chosen aisle, move bay-by-bay across the current aisle pair, then optionally U-turn on the next pair. Locked-position logic still works per bay, for example <b>3</b> for every 3rd location locked.</div>
+
+                <div class="config-section">
+                    <div class="section-title">Aisles</div>
+                    <div id="aisleContainer"></div>
+                    <div class="add-aisle-section">
+                        <button class="btn btn-secondary" onclick="addAisle()">+ Add Aisle</button>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button class="btn btn-primary" onclick="generateLocations()">Generate Locations + Sequence</button>
+                    <button class="btn btn-success" onclick="exportToExcel()" id="exportBtn" disabled>Download Excel</button>
+                    <button class="btn btn-secondary" onclick="exportToCsv()" id="csvBtn" disabled>Download CSV</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">Preview & Sequence Path</div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Aisles</div>
+                        <div class="stat-value" id="totalAisles">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Locations</div>
+                        <div class="stat-value" id="totalLocations">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Locked Locations</div>
+                        <div class="stat-value" id="lockedLocations">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Last Pick Seq</div>
+                        <div class="stat-value" id="lastSequence">0</div>
+                    </div>
+                </div>
+
+                <div class="path-box">
+                    <h3>Path Summary</h3>
+                    <p id="pathSummaryText">Generate locations to see the route summary.</p>
+                    <div class="path-chip-wrap" id="pathChips"></div>
+                </div>
+
+                <div class="summary-box">
+                    <h3>How the route follows</h3>
+                    <ul id="routeRuleList" style="padding-left:1.1rem; margin-top:0.35rem; display:grid; gap:0.35rem;">
+                        <li>Waiting for generation.</li>
+                    </ul>
+                </div>
+
+                <div class="preview-container">
+                    <table class="preview-table">
+                        <thead>
+                            <tr>
+                                <th>PICK_SEQ</th>
+                                <th>PUT_SEQ</th>
+                                <th>CHECK_SEQ</th>
+                                <th>LOCATION_ID</th>
+                                <th>Aisle</th>
+                                <th>Bay</th>
+                                <th>Position</th>
+                                <th>Level</th>
+                                <th>Locked?</th>
+                                <th>Lock Status</th>
+                                <th>Aisle Side</th>
+                                <th>ZONE_1</th>
+                                <th>SUBZONE_1</th>
+                                <th>WORK_ZONE</th>
+                                <th>LOC_TYPE</th>
+                                <th>SITE_ID</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewBody">
+                            <tr>
+                                <td colspan="16" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                    Configure aisles and click “Generate Locations + Sequence” to preview
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let aisleCounter = 0;
+        let generatedData = [];
+
+        const defaultAisles = [
+            { name: "A01", bays: 18, levels: "A,B,C,D,E,F", locsPerBay: 4, aisleSide: "L", lockedPositions: "" }
+        ];
+
+        function initializeDefaultAisles() {
+            defaultAisles.forEach(aisle => {
+                addAisle(aisle.name, aisle.bays, aisle.levels, aisle.locsPerBay, aisle.aisleSide, aisle.lockedPositions);
+            });
+        }
+
+        function addAisle(name = "", bays = 18, levels = "A,B,C,D,E,F", locsPerBay = 4, aisleSide = "", lockedPositions = "") {
+            const id = aisleCounter++;
+            const container = document.getElementById('aisleContainer');
+            const row = document.createElement('div');
+            row.className = 'aisle-row';
+            row.id = `aisle-${id}`;
+
+            row.innerHTML = `
+                <div>
+                    <label>Aisle</label>
+                    <input type="text" value="${name}" placeholder="A01" data-field="name">
+                </div>
+                <div>
+                    <label>Bays</label>
+                    <input type="number" value="${bays}" min="1" data-field="bays">
+                </div>
+                <div>
+                    <label>Levels</label>
+                    <input type="text" value="${levels}" placeholder="A,B,C,D,E,F" data-field="levels">
+                </div>
+                <div>
+                    <label>Locs/Bay</label>
+                    <input type="number" value="${locsPerBay}" min="1" data-field="locsPerBay">
+                </div>
+                <div>
+                    <label>Aisle Side</label>
+                    <select data-field="aisleSide">
+                        <option value="">-- Not Set --</option>
+                        <option value="L" ${aisleSide === 'L' ? 'selected' : ''}>L</option>
+                        <option value="R" ${aisleSide === 'R' ? 'selected' : ''}>R</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Locked Pos</label>
+                    <input type="text" value="${lockedPositions}" placeholder="e.g. 3 or 2,4" data-field="lockedPositions">
+                    <small>Overrides global rule for this aisle</small>
+                </div>
+                <div style="display:flex; align-items:end;">
+                    <button class="btn btn-danger" onclick="removeAisle(${id})">Remove</button>
+                </div>
+            `;
+
+            container.appendChild(row);
+        }
+
+        function removeAisle(id) {
+            const row = document.getElementById(`aisle-${id}`);
+            if (row) row.remove();
+        }
+
+        function parseLockedPositions(value, maxPosition) {
+            const lockedSet = new Set();
+            String(value || '')
+                .split(',')
+                .map(v => v.trim())
+                .filter(Boolean)
+                .forEach(part => {
+                    if (part.includes('-')) {
+                        const [startRaw, endRaw] = part.split('-').map(v => parseInt(v.trim(), 10));
+                        if (Number.isInteger(startRaw) && Number.isInteger(endRaw)) {
+                            const start = Math.min(startRaw, endRaw);
+                            const end = Math.max(startRaw, endRaw);
+                            for (let i = start; i <= end; i++) {
+                                if (i >= 1 && i <= maxPosition) lockedSet.add(i);
+                            }
+                        }
+                    } else {
+                        const num = parseInt(part, 10);
+                        if (Number.isInteger(num) && num >= 1 && num <= maxPosition) {
+                            lockedSet.add(num);
+                        }
+                    }
+                });
+            return Array.from(lockedSet).sort((a, b) => a - b);
+        }
+
+        function getAisleConfigs() {
+            const configs = [];
+            const rows = document.querySelectorAll('.aisle-row');
+
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('input, select');
+                const config = {};
+
+                inputs.forEach(input => {
+                    const field = input.dataset.field;
+                    const value = input.value.trim();
+                    if (field === 'bays' || field === 'locsPerBay') {
+                        config[field] = parseInt(value, 10) || 0;
+                    } else {
+                        config[field] = value;
+                    }
+                });
+
+                if (config.name && config.bays > 0 && config.levels && config.locsPerBay > 0) {
+                    configs.push(config);
+                }
+            });
+
+            return configs;
+        }
+
+        
+        function getSequenceSettings() {
+            return {
+                sequenceStart: parseInt(document.getElementById('sequenceStart').value, 10) || 0,
+                sequenceStep: parseInt(document.getElementById('sequenceStep').value, 10) || 1,
+                startAisle: document.getElementById('startAisle').value.trim().toUpperCase(),
+                corridorDirection: document.getElementById('corridorDirection').value,
+                firstPairBayDirection: document.getElementById('firstPairBayDirection').value,
+                pairTransition: document.getElementById('pairTransition').value,
+                withinBayPath: document.getElementById('withinBayPath').value,
+                levelDirection: document.getElementById('levelDirection').value,
+                positionDirection: document.getElementById('positionDirection').value,
+                globalLockedPositions: document.getElementById('globalLockedPositions').value.trim()
+            };
+        }
+
+        function sortValues(values, direction, numeric = false) {
+            const sorted = [...values].sort((a, b) => numeric ? a - b : String(a).localeCompare(String(b)));
+            if (direction === 'desc') sorted.reverse();
+            return sorted;
+        }
+
+        function parseAisleName(name) {
+            const match = String(name || '').toUpperCase().match(/^([A-Z]+)(\d+)$/);
+            if (!match) return { prefix: String(name || '').toUpperCase(), number: Number.NEGATIVE_INFINITY };
+            return { prefix: match[1], number: parseInt(match[2], 10) };
+        }
+
+        function sortAisleNames(names, direction) {
+            const sorted = [...names].sort((a, b) => {
+                const pa = parseAisleName(a);
+                const pb = parseAisleName(b);
+                if (pa.prefix !== pb.prefix) return pa.prefix.localeCompare(pb.prefix);
+                return pa.number - pb.number;
+            });
+            if (direction === 'desc') sorted.reverse();
+            return sorted;
+        }
+
+        function createPairList(configs, settings) {
+            const aisleNames = sortAisleNames(configs.map(c => c.name.toUpperCase()), settings.corridorDirection);
+            const pairs = [];
+            for (let i = 0; i < aisleNames.length; i += 2) {
+                pairs.push(aisleNames.slice(i, i + 2));
+            }
+
+            const startIndex = pairs.findIndex(pair => pair.includes(settings.startAisle));
+            const firstPairIndex = startIndex >= 0 ? startIndex : 0;
+            const orderedPairs = pairs.slice(firstPairIndex).concat(pairs.slice(0, firstPairIndex));
+
+            return orderedPairs.map((pair, idx) => {
+                const pairCopy = [...pair];
+                if (idx === 0 && settings.startAisle && pairCopy.includes(settings.startAisle)) {
+                    pairCopy.sort((a, b) => (a === settings.startAisle ? -1 : b === settings.startAisle ? 1 : 0));
+                }
+                return pairCopy;
+            });
+        }
+
+        function createCheckAisleOrder(configs, settings) {
+            return sortAisleNames(configs.map(c => c.name.toUpperCase()), settings.corridorDirection);
+        }
+
+        function createLocationId(aisleName, bay, position, level, locsPerBay) {
+            const sequenceWithinAisle = ((bay - 1) * locsPerBay) + position;
+            const bayStr = String(sequenceWithinAisle).padStart(3, '0');
+            return `${aisleName}${bayStr}${level}`;
+        }
+
+        function generateLocations() {
+            const configs = getAisleConfigs();
+            if (!configs.length) {
+                alert('Please configure at least one aisle');
+                return;
+            }
+
+            const globalSettings = {
+                siteId: document.getElementById('siteId').value.trim(),
+                lockStatus: document.getElementById('lockStatus').value,
+                zone1: document.getElementById('zone1').value.trim(),
+                subzone1: document.getElementById('subzone1').value.trim(),
+                workZone: document.getElementById('workZone').value.trim(),
+                locType: document.getElementById('locType').value
+            };
+
+            const sequenceSettings = getSequenceSettings();
+            const configMap = {};
+            configs.forEach(config => {
+                const levels = config.levels.split(',').map(l => l.trim()).filter(Boolean);
+                configMap[config.name.toUpperCase()] = {
+                    ...config,
+                    name: config.name.toUpperCase(),
+                    levels
+                };
+            });
+
+            const pairList = createPairList(configs, sequenceSettings);
+            generatedData = [];
+            let sequenceValue = sequenceSettings.sequenceStart;
+            let lockedCount = 0;
+            const routePreview = [];
+
+            pairList.forEach((pair, pairIndex) => {
+                const bayDirection = (sequenceSettings.pairTransition === 'uturn' && pairIndex % 2 === 1)
+                    ? (sequenceSettings.firstPairBayDirection === 'asc' ? 'desc' : 'asc')
+                    : sequenceSettings.firstPairBayDirection;
+
+                const pairConfigs = pair.map(name => configMap[name]).filter(Boolean);
+                if (!pairConfigs.length) return;
+
+                const maxBays = Math.max(...pairConfigs.map(cfg => cfg.bays));
+                const bayList = sortValues([...Array(maxBays)].map((_, i) => i + 1), bayDirection, true);
+
+                pairConfigs.forEach(cfg => {
+                    const lockedRule = cfg.lockedPositions || sequenceSettings.globalLockedPositions;
+                    routePreview.push({
+                        aisle: cfg.name,
+                        pair: pair.join(' + '),
+                        bayDirection,
+                        lockedPositions: parseLockedPositions(lockedRule, cfg.locsPerBay).join(', ') || 'None',
+                        locsPerBay: cfg.locsPerBay,
+                        bays: cfg.bays,
+                        levels: cfg.levels.join(', ')
+                    });
+                });
+
+                bayList.forEach(bay => {
+                    pair.forEach(aisleName => {
+                        const config = configMap[aisleName];
+                        if (!config || bay > config.bays) return;
+
+                        const lockedRule = config.lockedPositions || sequenceSettings.globalLockedPositions;
+                        const lockedPositions = parseLockedPositions(lockedRule, config.locsPerBay);
+                        const levels = sortValues(config.levels, sequenceSettings.levelDirection, false);
+                        const positions = sortValues([...Array(config.locsPerBay)].map((_, i) => i + 1), sequenceSettings.positionDirection, true);
+
+                        const outerFirst = sequenceSettings.withinBayPath === 'aisle-position-level' ? positions : levels;
+                        const outerLabel = sequenceSettings.withinBayPath === 'aisle-position-level' ? 'position' : 'level';
+                        const innerValues = sequenceSettings.withinBayPath === 'aisle-position-level' ? levels : positions;
+
+                        outerFirst.forEach(outerValue => {
+                            innerValues.forEach(innerValue => {
+                                const level = outerLabel === 'level' ? outerValue : innerValue;
+                                const position = outerLabel === 'position' ? outerValue : innerValue;
+                                const isLocked = lockedPositions.includes(position);
+                                if (isLocked) lockedCount++;
+                                sequenceValue += sequenceSettings.sequenceStep;
+
+                                generatedData.push({
+                                    pickSequence: sequenceValue,
+                                    putSequence: 0,
+                                    checkSequence: 0,
+                                    locationId: createLocationId(config.name, bay, position, level, config.locsPerBay),
+                                    aisle: config.name,
+                                    bay,
+                                    position,
+                                    level,
+                                    aisleSide: config.aisleSide || '',
+                                    zone1: globalSettings.zone1,
+                                    subzone1: globalSettings.subzone1,
+                                    workZone: globalSettings.workZone,
+                                    locType: globalSettings.locType,
+                                    siteId: globalSettings.siteId,
+                                    lockStatus: isLocked ? 'Locked' : globalSettings.lockStatus,
+                                    isLocked,
+                                    lockedRule: lockedRule || '',
+                                    pathSignature: `${pair.join(' → ')} | Bay ${bay} | ${config.name} | Pos ${position} | Level ${level}`,
+                                    checkPathSignature: '',
+                                    pairName: pair.join(' + '),
+                                    bayDirection
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+
+            const pickOrdered = [...generatedData].sort((a, b) => a.pickSequence - b.pickSequence);
+            let putSeq = sequenceSettings.sequenceStart;
+            pickOrdered.slice().reverse().forEach(row => {
+                putSeq += sequenceSettings.sequenceStep;
+                row.putSequence = putSeq;
+            });
+
+            const aisleOrder = createCheckAisleOrder(configs, sequenceSettings);
+            const levelOrderAsc = [...new Set(configs.flatMap(cfg => cfg.levels.split(',').map(l => l.trim()).filter(Boolean)))].sort((a,b) => String(a).localeCompare(String(b)));
+            let checkSeq = sequenceSettings.sequenceStart;
+            aisleOrder.forEach(aisleName => {
+                const cfg = configMap[aisleName];
+                if (!cfg) return;
+                const allowedLevels = new Set(cfg.levels);
+                const lockedRule = cfg.lockedPositions || sequenceSettings.globalLockedPositions;
+                const lockedPositions = parseLockedPositions(lockedRule, cfg.locsPerBay);
+                levelOrderAsc.forEach(level => {
+                    if (!allowedLevels.has(level)) return;
+                    for (let bay = 1; bay <= cfg.bays; bay++) {
+                        for (let position = 1; position <= cfg.locsPerBay; position++) {
+                            const locationId = createLocationId(cfg.name, bay, position, level, cfg.locsPerBay);
+                            const row = generatedData.find(item => item.locationId === locationId);
+                            if (!row) continue;
+                            checkSeq += sequenceSettings.sequenceStep;
+                            row.checkSequence = checkSeq;
+                            row.checkPathSignature = `${cfg.name} | Level ${level} | Bay ${bay} | Pos ${position}`;
+                            if (lockedPositions.includes(position) && !row.isLocked) row.isLocked = true;
+                        }
+                    }
+                });
+            });
+
+            updateStats(configs.length, generatedData.length, lockedCount, generatedData.length ? Math.max(...generatedData.map(r => r.pickSequence || 0)) : 0);
+            updatePathSummary(configs, sequenceSettings, routePreview, pairList);
+            updatePreview();
+            document.getElementById('exportBtn').disabled = !generatedData.length;
+            document.getElementById('csvBtn').disabled = !generatedData.length;
+        }
+
+        function updateStats(aisleCount, locationCount, lockedCount, lastSequence) {
+            document.getElementById('totalAisles').textContent = aisleCount;
+            document.getElementById('totalLocations').textContent = locationCount.toLocaleString();
+            document.getElementById('lockedLocations').textContent = lockedCount.toLocaleString();
+            document.getElementById('lastSequence').textContent = lastSequence.toLocaleString();
+        }
+
+        
+        function updatePathSummary(configs, settings, routePreview, pairList) {
+            const pathText = document.getElementById('pathSummaryText');
+            const chips = document.getElementById('pathChips');
+            const rules = document.getElementById('routeRuleList');
+
+            const firstPairExample = pairList[0] || [];
+            const nextPairExample = pairList[1] || [];
+            const withinBayLabels = {
+                'aisle-level-position': 'Aisle → Level → Position',
+                'aisle-position-level': 'Aisle → Position → Level'
+            };
+
+            const firstBayText = settings.firstPairBayDirection === 'asc' ? 'Bay 1 → Last bay' : 'Last bay → 1';
+            const nextPairText = settings.pairTransition === 'uturn' ? 'U-turn on next pair' : 'Keep same bay direction';
+
+            pathText.textContent = `Start at ${settings.startAisle || firstPairExample[0] || 'first aisle'}, move through paired aisles bay-by-bay, then ${settings.pairTransition === 'uturn' ? 'U-turn into the next aisle pair' : 'continue with the same bay direction on the next pair'}. Example: ${firstPairExample.join(' → ') || '-'} on the first pair, then ${nextPairExample.join(' → ') || '-'} on the next pair.`;
+
+            chips.innerHTML = `
+                <span class="chip">Start: ${settings.sequenceStart}</span>
+                <span class="chip">Step: ${settings.sequenceStep}</span>
+                <span class="chip">Start aisle: ${settings.startAisle || '-'}</span>
+                <span class="chip">Corridor: ${settings.corridorDirection === 'desc' ? 'High → Low' : 'Low → High'}</span>
+                <span class="chip">First pair: ${firstBayText}</span>
+                <span class="chip">${nextPairText}</span>
+                <span class="chip">Within bay: ${withinBayLabels[settings.withinBayPath]}</span>
+                <span class="chip">Level: ${settings.levelDirection === 'asc' ? 'A → Z' : 'Z → A'}</span>
+                <span class="chip">Position: ${settings.positionDirection === 'asc' ? '1 → Last' : 'Last → 1'}</span>
+                ${settings.globalLockedPositions ? `<span class="chip locked">Global locked: ${settings.globalLockedPositions}</span>` : ''}
+            `;
+
+            const pairBullets = pairList.slice(0, 6).map((pair, idx) => {
+                const bayDir = (settings.pairTransition === 'uturn' && idx % 2 === 1)
+                    ? (settings.firstPairBayDirection === 'asc' ? 'Last bay → 1' : 'Bay 1 → Last')
+                    : (settings.firstPairBayDirection === 'asc' ? 'Bay 1 → Last' : 'Last bay → 1');
+                return `<li><b>Pair ${idx + 1}</b>: ${pair.join(' → ')} with bay flow <b>${bayDir}</b>.</li>`;
+            }).join('');
+
+            const sampleAisles = routePreview.slice(0, 6).map(item => `<li><b>${item.aisle}</b>: pair ${item.pair}, bays ${item.bays}, positions per bay ${item.locsPerBay}, levels ${item.levels}, locked positions ${item.lockedPositions}.</li>`).join('');
+
+            rules.innerHTML = `
+                <li>The route groups aisles into physical pairs and works <b>bay-by-bay across the pair</b>.</li>
+                <li>The pick route starts from the aisle you enter and alternates between the two aisles in the active pair, one bay at a time.</li>
+                <li>When <b>U-turn on next pair</b> is selected, the following aisle pair reverses bay direction automatically.</li>
+                <li>Inside each aisle/bay, the detailed walk follows <b>${withinBayLabels[settings.withinBayPath]}</b> for <b>pick sequence</b>.</li>
+                <li><b>Putaway sequence</b> is the reverse of pick sequence.</li>
+                <li><b>Check sequence</b> is designed for scissors-lift stock checks: complete all <b>A</b> locations from <b>bay 1 upward</b> in the current aisle, then all <b>B</b>, then the next level, then move to the next aisle.</li>
+                ${pairBullets || '<li>No pair details available.</li>'}
+                ${sampleAisles || '<li>No aisle details available.</li>'}
+            `;
+        }
+
+        function updatePreview() {
+            const tbody = document.getElementById('previewBody');
+            tbody.innerHTML = '';
+
+            const previewLimit = 250;
+            const displayData = [...generatedData].sort((a,b)=>(a.pickSequence||0)-(b.pickSequence||0)).slice(0, previewLimit);
+
+            displayData.forEach(row => {
+                const tr = document.createElement('tr');
+                if (row.isLocked) tr.className = 'locked-row';
+                tr.innerHTML = `
+                    <td class="seq-cell">${row.pickSequence || ''}</td>
+                    <td class="seq-cell">${row.putSequence || ''}</td>
+                    <td class="seq-cell">${row.checkSequence || ''}</td>
+                    <td>${row.locationId}</td>
+                    <td>${row.aisle}</td>
+                    <td>${row.bay}</td>
+                    <td>${row.position}</td>
+                    <td>${row.level}</td>
+                    <td>${row.isLocked ? 'Yes' : 'No'}</td>
+                    <td>${row.lockStatus || '-'}</td>
+                    <td>${row.aisleSide || '-'}</td>
+                    <td>${row.zone1 || '-'}</td>
+                    <td>${row.subzone1 || '-'}</td>
+                    <td>${row.workZone || '-'}</td>
+                    <td>${row.locType || '-'}</td>
+                    <td>${row.siteId || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (generatedData.length > previewLimit) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td colspan="16" style="text-align:center; color: var(--warning); padding: 1rem;">
+                        Showing first ${previewLimit} of ${generatedData.length.toLocaleString()} locations
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        function exportToExcel() {
+            if (!generatedData.length) {
+                alert('No data to export. Please generate locations first.');
+                return;
+            }
+
+            const wsData = [[
+                'PICK_SEQUENCE','PUT_SEQUENCE','CHECK_SEQUENCE','LOCATION_ID','ZONE_1','SUBZONE_1','WORK_ZONE','LOC_TYPE','SITE_ID',
+                'AISLE','BAY','POSITION','LEVEL','AISLE_SIDE','LOCK_STATUS','IS_LOCKED','LOCKED_POSITION_RULE','PICK_PATH_SIGNATURE','CHECK_PATH_SIGNATURE'
+            ]];
+
+            [...generatedData].sort((a,b)=>(a.pickSequence||0)-(b.pickSequence||0)).forEach(row => {
+                wsData.push([
+                    row.pickSequence || '',
+                    row.putSequence || '',
+                    row.checkSequence || '',
+                    row.locationId,
+                    row.zone1 || '',
+                    row.subzone1 || '',
+                    row.workZone || '',
+                    row.locType || '',
+                    row.siteId || '',
+                    row.aisle,
+                    row.bay,
+                    row.position,
+                    row.level,
+                    row.aisleSide || '',
+                    row.lockStatus || '',
+                    row.isLocked ? 'Y' : 'N',
+                    row.lockedRule || '',
+                    row.pathSignature || '',
+                    row.checkPathSignature || ''
+                ]);
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            ws['!cols'] = [
+                { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 10 },
+                { wch: 8 }, { wch: 6 }, { wch: 9 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 10 }, { wch: 18 }, { wch: 32 }, { wch: 32 }
+            ];
+            XLSX.utils.book_append_sheet(wb, ws, 'Locations');
+            const timestamp = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `warehouse_locations_sequence_${timestamp}.xlsx`);
+        }
+
+        function exportToCsv() {
+            if (!generatedData.length) {
+                alert('No data to export. Please generate locations first.');
+                return;
+            }
+
+            const lines = [
+                'PICK_SEQUENCE,PUT_SEQUENCE,CHECK_SEQUENCE,LOCATION_ID,AISLE,BAY,POSITION,LEVEL,AISLE_SIDE,LOCK_STATUS,IS_LOCKED,ZONE_1,SUBZONE_1,WORK_ZONE,LOC_TYPE,SITE_ID,LOCKED_POSITION_RULE,PICK_PATH_SIGNATURE,CHECK_PATH_SIGNATURE'
+            ];
+
+            [...generatedData].sort((a,b)=>(a.pickSequence||0)-(b.pickSequence||0)).forEach(row => {
+                lines.push([
+                    row.pickSequence || '',
+                    row.putSequence || '',
+                    row.checkSequence || '',
+                    row.locationId,
+                    row.aisle,
+                    row.bay,
+                    row.position,
+                    row.level,
+                    row.aisleSide || '',
+                    row.lockStatus || '',
+                    row.isLocked ? 'Y' : 'N',
+                    row.zone1 || '',
+                    row.subzone1 || '',
+                    row.workZone || '',
+                    row.locType || '',
+                    row.siteId || '',
+                    row.lockedRule || '',
+                    `"${(row.pathSignature || '').replace(/"/g, '""')}"`
+                ].join(','));
+            });
+
+            const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `warehouse_locations_sequence_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+        }
+
+        initializeDefaultAisles();
+    </script>
+</body>
+</html>

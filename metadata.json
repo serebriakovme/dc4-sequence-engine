@@ -1,0 +1,7 @@
+{
+  "name": "DC4 Sequence Master Engine",
+  "description": "WMS Warehouse Location Sequencing & DTO Data Take-On Tool for RedPrairie DLx Dispatcher",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
