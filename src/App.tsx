@@ -576,11 +576,11 @@ export default function App() {
     if (!val || !max) return '#1a1f2c';
     const ratio = Math.min(1, Math.max(0, val / max));
     const stops = [
-      [0, 232, 142],   // #00e88e green
-      [0, 194, 224],   // #00c2e0 cyan
-      [58, 134, 255],  // #3A86FF blue
-      [131, 56, 236],  // #8338EC purple
-      [230, 57, 70]    // #E63946 red
+      [139, 92, 246],  // violet-500
+      [217, 70, 239],  // fuchsia-500
+      [236, 72, 153],  // pink-500
+      [244, 63, 94],   // rose-500
+      [245, 158, 11]   // amber-500
     ];
     const segment = ratio * (stops.length - 1);
     const idx = Math.floor(segment);
@@ -635,36 +635,36 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#0b0d14] text-[#e4e6ef] font-sans overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#020617] text-slate-100 font-sans overflow-hidden">
       {/* Top Header */}
-      <header className="px-6 py-3.5 bg-[#14171f] border-b border-[#252a38] flex justify-between items-center shrink-0">
+      <header className="px-6 py-3.5 bg-[#0f172a] border-b border-[#334155] flex justify-between items-center shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/30 flex items-center justify-center text-violet-400">
             <Warehouse className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-sm font-extrabold tracking-tight">DC4 <span className="text-emerald-400">DYNAMIC AISLE BUILDER</span> & MAP</h1>
+            <h1 className="text-sm font-extrabold tracking-tight">DC4 <span className="text-violet-400">DYNAMIC AISLE BUILDER</span> & MAP</h1>
             <p className="text-[10px] text-slate-400">RedPrairie DLx Dispatcher 2016.2 — Grid Architect & Sequence Visualizer</p>
           </div>
         </div>
 
         {/* Global Nav Tabs */}
-        <div className="flex items-center gap-1.5 bg-[#0e1118] p-1 border border-[#252a38] rounded-lg">
+        <div className="flex items-center gap-1.5 bg-[#0e1118] p-1 border border-[#334155] rounded-lg">
           <button
             onClick={() => setActiveTab('builder')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${activeTab === 'builder' ? 'bg-emerald-500 text-black' : 'text-slate-400 hover:text-white'}`}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${activeTab === 'builder' ? 'bg-violet-500 text-black' : 'text-slate-400 hover:text-white'}`}
           >
             <Grid3X3 className="w-3.5 h-3.5" /> Aisle Builder ({aisles.length})
           </button>
           <button
             onClick={() => setActiveTab('map')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${activeTab === 'map' ? 'bg-emerald-500 text-black' : 'text-slate-400 hover:text-white'}`}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${activeTab === 'map' ? 'bg-violet-500 text-black' : 'text-slate-400 hover:text-white'}`}
           >
             <Map className="w-3.5 h-3.5" /> Warehouse Map ({locations.length.toLocaleString()})
           </button>
           <button
             onClick={() => setActiveTab('sequence')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${activeTab === 'sequence' ? 'bg-emerald-500 text-black' : 'text-slate-400 hover:text-white'}`}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${activeTab === 'sequence' ? 'bg-violet-500 text-black' : 'text-slate-400 hover:text-white'}`}
           >
             <Sliders className="w-3.5 h-3.5" /> Sequence Rules
           </button>
@@ -676,7 +676,7 @@ export default function App() {
           </button>
           <button
             onClick={() => setActiveTab('export')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${activeTab === 'export' ? 'bg-emerald-500 text-black' : 'text-slate-400 hover:text-white'}`}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${activeTab === 'export' ? 'bg-violet-500 text-black' : 'text-slate-400 hover:text-white'}`}
           >
             <Download className="w-3.5 h-3.5" /> DTO Export
           </button>
@@ -686,7 +686,7 @@ export default function App() {
           <button 
             onClick={exportToExcel}
             disabled={!locations.length}
-            className="px-3.5 py-1.5 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 text-black font-extrabold rounded-md text-xs transition flex items-center gap-1.5"
+            className="px-3.5 py-1.5 bg-fuchsia-500 hover:bg-fuchsia-400 disabled:opacity-40 text-black font-extrabold rounded-md text-xs transition flex items-center gap-1.5"
           >
             <Download className="w-3.5 h-3.5" /> Export .xlsx
           </button>
@@ -700,11 +700,11 @@ export default function App() {
         {activeTab === 'builder' && (
           <div className="h-full grid grid-cols-[400px_1fr] overflow-hidden">
             {/* Left Control Column */}
-            <div className="bg-[#14171f] border-r border-[#252a38] p-4 overflow-y-auto flex flex-col gap-4">
+            <div className="bg-[#0f172a] border-r border-[#334155] p-4 overflow-y-auto flex flex-col gap-4">
               
               {/* Batch Aisle Generator Card */}
-              <div className="bg-[#10131a] border border-[#252a38] p-3.5 rounded-xl">
-                <h2 className="text-[11px] uppercase font-bold tracking-wider text-emerald-400 mb-2 flex items-center gap-2">
+              <div className="bg-[#1e293b] border border-[#334155] p-3.5 rounded-xl">
+                <h2 className="text-[11px] uppercase font-bold tracking-wider text-violet-400 mb-2 flex items-center gap-2">
                   <Grid3X3 className="w-3.5 h-3.5" /> Quick Batch Row Generator
                 </h2>
                 <p className="text-[10px] text-slate-400 mb-3 leading-relaxed">
@@ -713,65 +713,65 @@ export default function App() {
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   <div>
                     <label className="text-[9px] text-slate-400 font-semibold">Row Prefix</label>
-                    <input type="text" value={bulkPrefix} onChange={(e) => setBulkPrefix(e.target.value)} className="w-full mt-1 bg-black border border-[#252a38] rounded p-1.5 font-mono text-white text-xs outline-none" />
+                    <input type="text" value={bulkPrefix} onChange={(e) => setBulkPrefix(e.target.value)} className="w-full mt-1 bg-black border border-[#334155] rounded p-1.5 font-mono text-white text-xs outline-none" />
                   </div>
                   <div>
                     <label className="text-[9px] text-slate-400 font-semibold">Start #</label>
-                    <input type="number" value={bulkStartNum} onChange={(e) => setBulkStartNum(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#252a38] rounded p-1.5 font-mono text-white text-xs outline-none" min="1" />
+                    <input type="number" value={bulkStartNum} onChange={(e) => setBulkStartNum(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#334155] rounded p-1.5 font-mono text-white text-xs outline-none" min="1" />
                   </div>
                   <div>
                     <label className="text-[9px] text-slate-400 font-semibold">End #</label>
-                    <input type="number" value={bulkEndNum} onChange={(e) => setBulkEndNum(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#252a38] rounded p-1.5 font-mono text-white text-xs outline-none" min="1" />
+                    <input type="number" value={bulkEndNum} onChange={(e) => setBulkEndNum(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#334155] rounded p-1.5 font-mono text-white text-xs outline-none" min="1" />
                   </div>
                   <div>
                     <label className="text-[9px] text-slate-400 font-semibold">Bay Count</label>
-                    <input type="number" value={bulkBays} onChange={(e) => setBulkBays(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#252a38] rounded p-1.5 font-mono text-white text-xs outline-none" min="1" />
+                    <input type="number" value={bulkBays} onChange={(e) => setBulkBays(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#334155] rounded p-1.5 font-mono text-white text-xs outline-none" min="1" />
                   </div>
                   <div>
                     <label className="text-[9px] text-slate-400 font-semibold">Level Count</label>
-                    <input type="number" value={bulkLevels} onChange={(e) => setBulkLevels(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#252a38] rounded p-1.5 font-mono text-white text-xs outline-none" min="1" max="12" />
+                    <input type="number" value={bulkLevels} onChange={(e) => setBulkLevels(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#334155] rounded p-1.5 font-mono text-white text-xs outline-none" min="1" max="12" />
                   </div>
                   <div>
                     <label className="text-[9px] text-slate-400 font-semibold">Positions/Bay</label>
-                    <input type="number" value={bulkPositions} onChange={(e) => setBulkPositions(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#252a38] rounded p-1.5 font-mono text-white text-xs outline-none" min="1" />
+                    <input type="number" value={bulkPositions} onChange={(e) => setBulkPositions(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#334155] rounded p-1.5 font-mono text-white text-xs outline-none" min="1" />
                   </div>
                 </div>
 
                 <div className="mt-2.5 grid grid-cols-3 gap-2 text-xs">
                   <div>
-                    <label className="text-[9px] text-emerald-400 font-semibold">Alt Pos Bays</label>
-                    <input type="text" value={bulkAltBays} onChange={(e) => setBulkAltBays(e.target.value)} placeholder="e.g. 1-5" className="w-full mt-1 bg-black border border-[#252a38] rounded p-1.5 font-mono text-emerald-400 text-xs outline-none" />
+                    <label className="text-[9px] text-violet-400 font-semibold">Alt Pos Bays</label>
+                    <input type="text" value={bulkAltBays} onChange={(e) => setBulkAltBays(e.target.value)} placeholder="e.g. 1-5" className="w-full mt-1 bg-black border border-[#334155] rounded p-1.5 font-mono text-violet-400 text-xs outline-none" />
                     <span className="text-[9px] text-slate-500 mt-0.5 block">Bays with alt pos.</span>
                   </div>
                   <div>
-                    <label className="text-[9px] text-emerald-400 font-semibold">Alt Pos / Bay</label>
-                    <input type="number" value={bulkAltPositions} onChange={(e) => setBulkAltPositions(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#252a38] rounded p-1.5 font-mono text-emerald-400 text-xs outline-none" min="1" />
+                    <label className="text-[9px] text-violet-400 font-semibold">Alt Pos / Bay</label>
+                    <input type="number" value={bulkAltPositions} onChange={(e) => setBulkAltPositions(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#334155] rounded p-1.5 font-mono text-violet-400 text-xs outline-none" min="1" />
                     <span className="text-[9px] text-slate-500 mt-0.5 block">Overrides count.</span>
                   </div>
                   <div>
                     <label className="text-[9px] text-amber-400 font-semibold">Locked Position Rule</label>
-                    <input type="text" value={bulkLockRule} onChange={(e) => setBulkLockRule(e.target.value)} placeholder="e.g. 3 or 2,4" className="w-full mt-1 bg-black border border-[#252a38] rounded p-1.5 font-mono text-amber-400 text-xs outline-none" />
+                    <input type="text" value={bulkLockRule} onChange={(e) => setBulkLockRule(e.target.value)} placeholder="e.g. 3 or 2,4" className="w-full mt-1 bg-black border border-[#334155] rounded p-1.5 font-mono text-amber-400 text-xs outline-none" />
                     <span className="text-[9px] text-slate-500 mt-0.5 block">e.g. "3" locks 3rd pos.</span>
                   </div>
                 </div>
 
                 <button 
                   onClick={handleBulkGenerateAisles}
-                  className="w-full mt-3 py-2 bg-[#252a38] hover:bg-slate-700 text-emerald-400 font-bold rounded-lg text-xs transition flex items-center justify-center gap-1.5"
+                  className="w-full mt-3 py-2 bg-[#334155] hover:bg-slate-700 text-violet-400 font-bold rounded-lg text-xs transition flex items-center justify-center gap-1.5"
                 >
                   <RefreshCw className="w-3.5 h-3.5" /> Apply Batch Rows ({bulkEndNum - bulkStartNum + 1} Aisles)
                 </button>
               </div>
 
               {/* CSV Upload / Paste Card */}
-              <div className="bg-[#10131a] border border-[#252a38] p-3.5 rounded-xl flex flex-col gap-2.5">
+              <div className="bg-[#1e293b] border border-[#334155] p-3.5 rounded-xl flex flex-col gap-2.5">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-[11px] uppercase font-bold tracking-wider text-cyan-400 flex items-center gap-2">
+                  <h2 className="text-[11px] uppercase font-bold tracking-wider text-fuchsia-400 flex items-center gap-2">
                     <Upload className="w-3.5 h-3.5" /> Or Import CSV File
                   </h2>
                   <button 
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-2 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded text-[10px] font-bold"
+                    className="px-2 py-1 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30 rounded text-[10px] font-bold"
                   >
                     Upload File
                   </button>
@@ -787,16 +787,16 @@ export default function App() {
                   value={csvRawText}
                   onChange={(e) => setCsvRawText(e.target.value)}
                   placeholder="Paste CSV records with headers:&#10;LOCATION_ID,AISLE,BAY,LEVEL,POSITION&#10;A01001A,A01,1,A,1&#10;A01002A,A01,1,A,2..."
-                  className="w-full h-24 bg-black border border-[#252a38] rounded p-2 text-[10px] font-mono text-cyan-400 outline-none resize-vertical"
+                  className="w-full h-24 bg-black border border-[#334155] rounded p-2 text-[10px] font-mono text-fuchsia-400 outline-none resize-vertical"
                 />
                 <button 
                   onClick={() => parseCSVData(csvRawText)}
-                  className="w-full py-1.5 bg-cyan-500 hover:bg-cyan-400 text-black font-bold rounded-lg text-xs transition"
+                  className="w-full py-1.5 bg-fuchsia-500 hover:bg-fuchsia-400 text-black font-bold rounded-lg text-xs transition"
                 >
                   Parse & Map Pasted CSV
                 </button>
                 {csvStatus && (
-                  <div className={`p-2 rounded text-[10px] font-mono ${csvStatus.type === 'err' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'}`}>
+                  <div className={`p-2 rounded text-[10px] font-mono ${csvStatus.type === 'err' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' : 'bg-violet-500/10 text-violet-400 border border-violet-500/30'}`}>
                     {csvStatus.message}
                   </div>
                 )}
@@ -813,14 +813,14 @@ export default function App() {
               {/* Primary Action Button */}
               <button 
                 onClick={handleBuildGridAndMap}
-                className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold rounded-xl text-xs transition shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 mt-auto"
+                className="w-full py-3 bg-violet-500 hover:bg-violet-400 text-black font-extrabold rounded-xl text-xs transition shadow-lg shadow-violet-500/10 flex items-center justify-center gap-2 mt-auto"
               >
                 <Map className="w-4 h-4" /> Build Map & Calculate Sequences
               </button>
             </div>
 
             {/* Right Detailed Aisle Table */}
-            <div className="p-5 bg-[#08090e] overflow-auto flex flex-col gap-4">
+            <div className="p-5 bg-[#020617] overflow-auto flex flex-col gap-4">
               <div className="flex justify-between items-center">
                 <div>
                   <h2 className="text-sm font-bold text-white">Defined Aisle & Row Specifications</h2>
@@ -828,28 +828,28 @@ export default function App() {
                 </div>
                 <button 
                   onClick={handleAddAisle}
-                  className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded-lg flex items-center gap-1.5 transition"
+                  className="px-3 py-1.5 bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 border border-violet-500/30 text-xs font-bold rounded-lg flex items-center gap-1.5 transition"
                 >
                   <Plus className="w-3.5 h-3.5" /> Add Single Aisle
                 </button>
               </div>
 
               {/* Editable Aisle List Grid */}
-              <div className="border border-[#252a38] rounded-xl overflow-hidden bg-[#10131a]">
+              <div className="border border-[#334155] rounded-xl overflow-hidden bg-[#1e293b]">
                 <table className="w-full border-collapse font-mono text-xs text-left">
                   <thead>
-                    <tr className="bg-[#14171f] text-slate-400 border-b border-[#252a38]">
+                    <tr className="bg-[#0f172a] text-slate-400 border-b border-[#334155]">
                       <th className="p-3">Aisle / Row</th>
                       <th className="p-3">Bays</th>
                       <th className="p-3">Levels (Count)</th>
                       <th className="p-3">Positions / Bay</th>
-                      <th className="p-3 text-emerald-400" colSpan={2}>Alt Pos Bays & Count</th>
+                      <th className="p-3 text-violet-400" colSpan={2}>Alt Pos Bays & Count</th>
                       <th className="p-3">Side</th>
                       <th className="p-3 text-amber-400">Locked Pos Rule</th>
                       <th className="p-3 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#1b2030]">
+                  <tbody className="divide-y divide-[#1e293b]">
                     {aisles.map((aisle) => (
                       <tr key={aisle.id} className="hover:bg-white/5 transition">
                         <td className="p-3">
@@ -857,7 +857,7 @@ export default function App() {
                             type="text" 
                             value={aisle.name} 
                             onChange={(e) => handleUpdateAisle(aisle.id, 'name', e.target.value)}
-                            className="w-24 bg-black border border-[#252a38] focus:border-emerald-500 rounded p-1 font-bold text-white text-xs outline-none"
+                            className="w-24 bg-black border border-[#334155] focus:border-violet-500 rounded p-1 font-bold text-white text-xs outline-none"
                           />
                         </td>
                         <td className="p-3">
@@ -865,7 +865,7 @@ export default function App() {
                             type="number" 
                             value={aisle.bays} 
                             onChange={(e) => handleUpdateAisle(aisle.id, 'bays', parseInt(e.target.value, 10) || 1)}
-                            className="w-16 bg-black border border-[#252a38] focus:border-emerald-500 rounded p-1 text-white text-xs outline-none"
+                            className="w-16 bg-black border border-[#334155] focus:border-violet-500 rounded p-1 text-white text-xs outline-none"
                             min="1"
                           />
                         </td>
@@ -875,7 +875,7 @@ export default function App() {
                               type="number" 
                               value={aisle.levelCount} 
                               onChange={(e) => handleUpdateAisle(aisle.id, 'levelCount', e.target.value)}
-                              className="w-14 bg-black border border-[#252a38] focus:border-emerald-500 rounded p-1 text-white text-xs outline-none"
+                              className="w-14 bg-black border border-[#334155] focus:border-violet-500 rounded p-1 text-white text-xs outline-none"
                               min="1"
                               max="12"
                             />
@@ -887,7 +887,7 @@ export default function App() {
                             type="number" 
                             value={aisle.positionsPerBay} 
                             onChange={(e) => handleUpdateAisle(aisle.id, 'positionsPerBay', parseInt(e.target.value, 10) || 1)}
-                            className="w-12 bg-black border border-[#252a38] focus:border-emerald-500 rounded p-1 text-white text-xs outline-none"
+                            className="w-12 bg-black border border-[#334155] focus:border-violet-500 rounded p-1 text-white text-xs outline-none"
                             min="1"
                           />
                         </td>
@@ -897,7 +897,7 @@ export default function App() {
                             value={aisle.altBays} 
                             onChange={(e) => handleUpdateAisle(aisle.id, 'altBays', e.target.value)}
                             placeholder="e.g. 1-5"
-                            className="w-16 bg-black border border-[#252a38] focus:border-emerald-400 rounded p-1 text-emerald-400 text-xs outline-none font-bold"
+                            className="w-16 bg-black border border-[#334155] focus:border-violet-400 rounded p-1 text-violet-400 text-xs outline-none font-bold"
                           />
                         </td>
                         <td className="p-1">
@@ -905,7 +905,7 @@ export default function App() {
                             type="number" 
                             value={aisle.altPositionsPerBay} 
                             onChange={(e) => handleUpdateAisle(aisle.id, 'altPositionsPerBay', parseInt(e.target.value, 10) || 1)}
-                            className="w-10 bg-black border border-[#252a38] focus:border-emerald-400 rounded p-1 text-emerald-400 text-xs outline-none"
+                            className="w-10 bg-black border border-[#334155] focus:border-violet-400 rounded p-1 text-violet-400 text-xs outline-none"
                             min="1"
                           />
                         </td>
@@ -913,7 +913,7 @@ export default function App() {
                           <select 
                             value={aisle.aisleSide} 
                             onChange={(e) => handleUpdateAisle(aisle.id, 'aisleSide', e.target.value)}
-                            className="bg-black border border-[#252a38] rounded p-1 text-white text-xs outline-none"
+                            className="bg-black border border-[#334155] rounded p-1 text-white text-xs outline-none"
                           >
                             <option value="L">L</option>
                             <option value="R">R</option>
@@ -925,7 +925,7 @@ export default function App() {
                             value={aisle.lockedPositions} 
                             onChange={(e) => handleUpdateAisle(aisle.id, 'lockedPositions', e.target.value)}
                             placeholder="e.g. 3"
-                            className="w-20 bg-black border border-[#252a38] focus:border-amber-400 rounded p-1 text-amber-400 text-xs outline-none font-bold"
+                            className="w-20 bg-black border border-[#334155] focus:border-amber-400 rounded p-1 text-amber-400 text-xs outline-none font-bold"
                           />
                         </td>
                         <td className="p-3 text-right">
@@ -946,23 +946,23 @@ export default function App() {
 
               {/* Summary KPIs */}
               <div className="grid grid-cols-4 gap-3">
-                <div className="bg-[#14171f] border border-[#252a38] p-3 rounded-xl text-center">
+                <div className="bg-[#0f172a] border border-[#334155] p-3 rounded-xl text-center">
                   <div className="text-[10px] uppercase text-slate-400 font-semibold mb-1">Defined Aisles</div>
                   <div className="text-xl font-mono font-bold text-purple-400">{aisles.length}</div>
                 </div>
-                <div className="bg-[#14171f] border border-[#252a38] p-3 rounded-xl text-center">
+                <div className="bg-[#0f172a] border border-[#334155] p-3 rounded-xl text-center">
                   <div className="text-[10px] uppercase text-slate-400 font-semibold mb-1">Estimated Locations</div>
-                  <div className="text-xl font-mono font-bold text-emerald-400">
+                  <div className="text-xl font-mono font-bold text-violet-400">
                     {aisles.reduce((sum, a) => sum + (a.bays * a.levelCount * a.positionsPerBay), 0).toLocaleString()}
                   </div>
                 </div>
-                <div className="bg-[#14171f] border border-[#252a38] p-3 rounded-xl text-center">
+                <div className="bg-[#0f172a] border border-[#334155] p-3 rounded-xl text-center">
                   <div className="text-[10px] uppercase text-slate-400 font-semibold mb-1">Max Bays Per Aisle</div>
-                  <div className="text-xl font-mono font-bold text-cyan-400">
+                  <div className="text-xl font-mono font-bold text-fuchsia-400">
                     {Math.max(...aisles.map(a => a.bays), 0)}
                   </div>
                 </div>
-                <div className="bg-[#14171f] border border-[#252a38] p-3 rounded-xl text-center">
+                <div className="bg-[#0f172a] border border-[#334155] p-3 rounded-xl text-center">
                   <div className="text-[10px] uppercase text-slate-400 font-semibold mb-1">Global Locked Pos Rule</div>
                   <div className="text-xl font-mono font-bold text-amber-400">{globalLockedPos || 'None'}</div>
                 </div>
@@ -975,16 +975,16 @@ export default function App() {
         {activeTab === 'map' && (
           <div className="h-full grid grid-cols-[1fr_320px] overflow-hidden">
             {/* Map Canvas & Navigation Controls */}
-            <div className="p-4 bg-[#08090e] overflow-auto flex flex-col gap-3">
+            <div className="p-4 bg-[#020617] overflow-auto flex flex-col gap-3">
               <div className="flex justify-between items-center shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-slate-400">Heatmap Mode:</span>
-                  <div className="flex bg-[#14171f] border border-[#252a38] p-0.5 rounded-lg">
+                  <div className="flex bg-[#0f172a] border border-[#334155] p-0.5 rounded-lg">
                     {(['pick', 'put', 'check', 'level', 'lock'] as const).map(mode => (
                       <button
                         key={mode}
                         onClick={() => setMapViewMode(mode)}
-                        className={`px-3 py-1 rounded text-xs font-bold transition ${mapViewMode === mode ? 'bg-emerald-500 text-black' : 'text-slate-400 hover:text-white'}`}
+                        className={`px-3 py-1 rounded text-xs font-bold transition ${mapViewMode === mode ? 'bg-violet-500 text-black' : 'text-slate-400 hover:text-white'}`}
                       >
                         {mode === 'pick' && 'Pick Seq'}
                         {mode === 'put' && 'Putaway Seq'}
@@ -1004,7 +1004,7 @@ export default function App() {
                       value={searchFilter}
                       onChange={(e) => setSearchFilter(e.target.value)}
                       placeholder="Filter location / aisle..."
-                      className="pl-8 pr-3 py-1 bg-black border border-[#252a38] rounded-md text-xs font-mono text-white outline-none w-48 focus:border-emerald-500"
+                      className="pl-8 pr-3 py-1 bg-black border border-[#334155] rounded-md text-xs font-mono text-white outline-none w-48 focus:border-violet-500"
                     />
                   </div>
                   <span className="text-xs font-mono text-slate-400">
@@ -1016,7 +1016,7 @@ export default function App() {
               {/* Heatmap Legend */}
               {(mapViewMode === 'pick' || mapViewMode === 'put' || mapViewMode === 'check') && (
                 <div className="flex flex-col gap-1 shrink-0">
-                  <div className="h-2 rounded bg-gradient-to-r from-[#00e88e] via-[#00c2e0] via-[#3A86FF] via-[#8338EC] to-[#E63946]"></div>
+                  <div className="h-2 rounded bg-gradient-to-r from-violet-500 via-fuchsia-500 via-pink-500 via-rose-500 to-amber-500"></div>
                   <div className="flex justify-between text-[9px] font-mono text-slate-400">
                     <span>First Sequence ({seqStart + seqStep})</span>
                     <span>Max Sequence ({mapViewMode === 'put' ? maxPut : mapViewMode === 'check' ? maxCheck : maxPick})</span>
@@ -1025,7 +1025,7 @@ export default function App() {
               )}
 
               {/* 2D Interactive Grid Map Container */}
-              <div className="flex-1 overflow-auto border border-[#252a38] rounded-xl p-4 bg-[#06070c]">
+              <div className="flex-1 overflow-auto border border-[#334155] rounded-xl p-4 bg-[#0f172a]">
                 {uniqueAisles.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
                     <Map className="w-8 h-8 mb-2 opacity-50" />
@@ -1039,9 +1039,9 @@ export default function App() {
                       const maxAisleBay = Math.max(...aisleLocs.map(l => l.bay), 1);
 
                       return (
-                        <div key={aisleName} className="flex flex-col gap-1.5 p-3 rounded-lg border border-[#1b2030] bg-[#0c0e17]/80">
-                          <div className="flex justify-between items-center text-xs font-mono pb-1 border-b border-[#1b2030]">
-                            <span className="font-bold text-emerald-400">Aisle {aisleName}</span>
+                        <div key={aisleName} className="flex flex-col gap-1.5 p-3 rounded-lg border border-[#1e293b] bg-[#0c0e17]/80">
+                          <div className="flex justify-between items-center text-xs font-mono pb-1 border-b border-[#1e293b]">
+                            <span className="font-bold text-violet-400">Aisle {aisleName}</span>
                             <span className="text-[10px] text-slate-400">{aisleLocs.length} locations | {maxAisleBay} Bays</span>
                           </div>
 
@@ -1062,7 +1062,7 @@ export default function App() {
                                     }
 
                                     return (
-                                      <div key={bayNum} className="flex gap-px p-0.5 bg-black/60 rounded border border-[#252a38]">
+                                      <div key={bayNum} className="flex gap-px p-0.5 bg-black/60 rounded border border-[#334155]">
                                         {bayCells.sort((a, b) => a.position - b.position).map(cell => {
                                           let bg = '#1a1e2a';
                                           const q = searchFilter.trim().toUpperCase();
@@ -1086,7 +1086,7 @@ export default function App() {
                                               onClick={() => setSelectedLocationId(cell.id)}
                                               title={`${cell.id} | Bay ${cell.bay} Pos ${cell.position} Lvl ${cell.level} | Pick #${cell.pickSeq} Put #${cell.putSeq} Chk #${cell.checkSeq} | ${cell.isLocked ? 'LOCKED' : 'UNLOCKED'}`}
                                               style={{ background: bg }}
-                                              className={`w-3 h-3 rounded-xs cursor-pointer transition hover:scale-125 hover:z-20 ${cell.isLocked ? 'ring-1 ring-amber-400' : ''} ${isSelected ? 'ring-2 ring-white scale-125 z-30' : ''} ${matchesSearch ? 'ring-2 ring-cyan-400' : ''}`}
+                                              className={`w-3 h-3 rounded-xs cursor-pointer transition hover:scale-125 hover:z-20 ${cell.isLocked ? 'ring-1 ring-amber-400' : ''} ${isSelected ? 'ring-2 ring-white scale-125 z-30' : ''} ${matchesSearch ? 'ring-2 ring-fuchsia-400' : ''}`}
                                             />
                                           );
                                         })}
@@ -1106,21 +1106,21 @@ export default function App() {
             </div>
 
             {/* Right Cell Inspector & Diagnostics */}
-            <div className="bg-[#14171f] border-l border-[#252a38] p-4 overflow-y-auto flex flex-col gap-4">
-              <div className="bg-[#10131a] border border-[#252a38] p-3.5 rounded-xl">
-                <h3 className="text-xs uppercase font-bold text-emerald-400 tracking-wider mb-2">Location Inspector</h3>
+            <div className="bg-[#0f172a] border-l border-[#334155] p-4 overflow-y-auto flex flex-col gap-4">
+              <div className="bg-[#1e293b] border border-[#334155] p-3.5 rounded-xl">
+                <h3 className="text-xs uppercase font-bold text-violet-400 tracking-wider mb-2">Location Inspector</h3>
                 {selectedCell ? (
                   <div className="flex flex-col gap-1.5 font-mono text-xs">
-                    <div className="text-sm font-bold text-white pb-1.5 border-b border-[#252a38]">{selectedCell.id}</div>
-                    <div className="grid grid-cols-2 py-1 border-b border-[#1b2030]"><span className="text-slate-400">Aisle</span><span className="font-bold text-white">{selectedCell.aisle}</span></div>
-                    <div className="grid grid-cols-2 py-1 border-b border-[#1b2030]"><span className="text-slate-400">Bay</span><span className="text-white">{selectedCell.bay}</span></div>
-                    <div className="grid grid-cols-2 py-1 border-b border-[#1b2030]"><span className="text-slate-400">Position</span><span className="text-white">{selectedCell.position}</span></div>
-                    <div className="grid grid-cols-2 py-1 border-b border-[#1b2030]"><span className="text-slate-400">Level</span><span className="text-white">{selectedCell.level}</span></div>
-                    <div className="grid grid-cols-2 py-1 border-b border-[#1b2030]"><span className="text-slate-400">Side</span><span className="text-white">{selectedCell.side}</span></div>
-                    <div className="grid grid-cols-2 py-1 border-b border-[#1b2030]"><span className="text-slate-400">Lock Status</span><span className={selectedCell.isLocked ? 'text-amber-400 font-bold' : 'text-slate-300'}>{selectedCell.lockStatus}</span></div>
-                    <div className="grid grid-cols-2 py-1 border-b border-[#1b2030]"><span className="text-slate-400">Pick Seq</span><span className="text-emerald-400 font-bold">{selectedCell.pickSeq}</span></div>
-                    <div className="grid grid-cols-2 py-1 border-b border-[#1b2030]"><span className="text-slate-400">Putaway Seq</span><span className="text-cyan-400 font-bold">{selectedCell.putSeq}</span></div>
-                    <div className="grid grid-cols-2 py-1 border-b border-[#1b2030]"><span className="text-slate-400">Check Seq</span><span className="text-purple-400 font-bold">{selectedCell.checkSeq}</span></div>
+                    <div className="text-sm font-bold text-white pb-1.5 border-b border-[#334155]">{selectedCell.id}</div>
+                    <div className="grid grid-cols-2 py-1 border-b border-[#1e293b]"><span className="text-slate-400">Aisle</span><span className="font-bold text-white">{selectedCell.aisle}</span></div>
+                    <div className="grid grid-cols-2 py-1 border-b border-[#1e293b]"><span className="text-slate-400">Bay</span><span className="text-white">{selectedCell.bay}</span></div>
+                    <div className="grid grid-cols-2 py-1 border-b border-[#1e293b]"><span className="text-slate-400">Position</span><span className="text-white">{selectedCell.position}</span></div>
+                    <div className="grid grid-cols-2 py-1 border-b border-[#1e293b]"><span className="text-slate-400">Level</span><span className="text-white">{selectedCell.level}</span></div>
+                    <div className="grid grid-cols-2 py-1 border-b border-[#1e293b]"><span className="text-slate-400">Side</span><span className="text-white">{selectedCell.side}</span></div>
+                    <div className="grid grid-cols-2 py-1 border-b border-[#1e293b]"><span className="text-slate-400">Lock Status</span><span className={selectedCell.isLocked ? 'text-amber-400 font-bold' : 'text-slate-300'}>{selectedCell.lockStatus}</span></div>
+                    <div className="grid grid-cols-2 py-1 border-b border-[#1e293b]"><span className="text-slate-400">Pick Seq</span><span className="text-violet-400 font-bold">{selectedCell.pickSeq}</span></div>
+                    <div className="grid grid-cols-2 py-1 border-b border-[#1e293b]"><span className="text-slate-400">Putaway Seq</span><span className="text-fuchsia-400 font-bold">{selectedCell.putSeq}</span></div>
+                    <div className="grid grid-cols-2 py-1 border-b border-[#1e293b]"><span className="text-slate-400">Check Seq</span><span className="text-purple-400 font-bold">{selectedCell.checkSeq}</span></div>
                     <div className="grid grid-cols-2 py-1"><span className="text-slate-400">Site ID</span><span className="text-white">{selectedCell.siteId}</span></div>
                   </div>
                 ) : (
@@ -1131,13 +1131,13 @@ export default function App() {
               </div>
 
               {/* Map Statistics */}
-              <div className="bg-[#10131a] border border-[#252a38] p-3.5 rounded-xl flex flex-col gap-2 font-mono text-xs">
-                <h3 className="text-xs uppercase font-bold text-cyan-400 tracking-wider">Map Statistics</h3>
-                <div className="flex justify-between py-1 border-b border-[#1b2030]"><span className="text-slate-400">Total Locations:</span><span className="text-white font-bold">{locations.length.toLocaleString()}</span></div>
-                <div className="flex justify-between py-1 border-b border-[#1b2030]"><span className="text-slate-400">Total Aisles:</span><span className="text-white">{uniqueAisles.length}</span></div>
-                <div className="flex justify-between py-1 border-b border-[#1b2030]"><span className="text-slate-400">Max Bays:</span><span className="text-white">{maxBayInMap}</span></div>
-                <div className="flex justify-between py-1 border-b border-[#1b2030]"><span className="text-slate-400">Locked Locations:</span><span className="text-amber-400 font-bold">{locations.filter(l => l.isLocked).length.toLocaleString()}</span></div>
-                <div className="flex justify-between py-1"><span className="text-slate-400">Max Pick Seq:</span><span className="text-emerald-400 font-bold">{maxPick}</span></div>
+              <div className="bg-[#1e293b] border border-[#334155] p-3.5 rounded-xl flex flex-col gap-2 font-mono text-xs">
+                <h3 className="text-xs uppercase font-bold text-fuchsia-400 tracking-wider">Map Statistics</h3>
+                <div className="flex justify-between py-1 border-b border-[#1e293b]"><span className="text-slate-400">Total Locations:</span><span className="text-white font-bold">{locations.length.toLocaleString()}</span></div>
+                <div className="flex justify-between py-1 border-b border-[#1e293b]"><span className="text-slate-400">Total Aisles:</span><span className="text-white">{uniqueAisles.length}</span></div>
+                <div className="flex justify-between py-1 border-b border-[#1e293b]"><span className="text-slate-400">Max Bays:</span><span className="text-white">{maxBayInMap}</span></div>
+                <div className="flex justify-between py-1 border-b border-[#1e293b]"><span className="text-slate-400">Locked Locations:</span><span className="text-amber-400 font-bold">{locations.filter(l => l.isLocked).length.toLocaleString()}</span></div>
+                <div className="flex justify-between py-1"><span className="text-slate-400">Max Pick Seq:</span><span className="text-violet-400 font-bold">{maxPick}</span></div>
               </div>
             </div>
           </div>
@@ -1145,40 +1145,40 @@ export default function App() {
 
         {/* TAB 3: SEQUENCE RULES & CONFIGURATION */}
         {activeTab === 'sequence' && (
-          <div className="p-6 bg-[#08090e] h-full overflow-auto flex flex-col gap-6 max-w-4xl mx-auto">
+          <div className="p-6 bg-[#020617] h-full overflow-auto flex flex-col gap-6 max-w-4xl mx-auto">
             <div>
               <h2 className="text-lg font-bold text-white mb-1">Sequence Routing & Traversal Rules</h2>
               <p className="text-xs text-slate-400">Configure parameters for Pick, Putaway, and Scissors-Lift Stock Check sequences.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#14171f] border border-[#252a38] p-4 rounded-xl flex flex-col gap-3">
-                <h3 className="text-xs font-bold uppercase text-emerald-400 tracking-wider">Sequence Numbering</h3>
+              <div className="bg-[#0f172a] border border-[#334155] p-4 rounded-xl flex flex-col gap-3">
+                <h3 className="text-xs font-bold uppercase text-violet-400 tracking-wider">Sequence Numbering</h3>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <label className="text-[10px] text-slate-400 font-semibold">Start Sequence</label>
-                    <input type="number" value={seqStart} onChange={(e) => setSeqStart(parseInt(e.target.value, 10) || 0)} className="w-full mt-1 bg-black border border-[#252a38] rounded p-1.5 font-mono text-white outline-none" />
+                    <input type="number" value={seqStart} onChange={(e) => setSeqStart(parseInt(e.target.value, 10) || 0)} className="w-full mt-1 bg-black border border-[#334155] rounded p-1.5 font-mono text-white outline-none" />
                   </div>
                   <div>
                     <label className="text-[10px] text-slate-400 font-semibold">Sequence Increment Step</label>
-                    <input type="number" value={seqStep} onChange={(e) => setSeqStep(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#252a38] rounded p-1.5 font-mono text-white outline-none" min="1" />
+                    <input type="number" value={seqStep} onChange={(e) => setSeqStep(parseInt(e.target.value, 10) || 1)} className="w-full mt-1 bg-black border border-[#334155] rounded p-1.5 font-mono text-white outline-none" min="1" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-[#14171f] border border-[#252a38] p-4 rounded-xl flex flex-col gap-3">
-                <h3 className="text-xs font-bold uppercase text-cyan-400 tracking-wider">Corridor Traversal Routing</h3>
+              <div className="bg-[#0f172a] border border-[#334155] p-4 rounded-xl flex flex-col gap-3">
+                <h3 className="text-xs font-bold uppercase text-fuchsia-400 tracking-wider">Corridor Traversal Routing</h3>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <label className="text-[10px] text-slate-400 font-semibold">Pair Transition</label>
-                    <select value={pairTransition} onChange={(e) => setPairTransition(e.target.value as any)} className="w-full mt-1 bg-black border border-[#252a38] rounded p-1.5 font-mono text-white outline-none">
+                    <select value={pairTransition} onChange={(e) => setPairTransition(e.target.value as any)} className="w-full mt-1 bg-black border border-[#334155] rounded p-1.5 font-mono text-white outline-none">
                       <option value="uturn">U-Turn Into Next Pair</option>
                       <option value="straight">Straight Same Direction</option>
                     </select>
                   </div>
                   <div>
                     <label className="text-[10px] text-slate-400 font-semibold">Corridor Direction</label>
-                    <select value={corridorDirection} onChange={(e) => setCorridorDirection(e.target.value as any)} className="w-full mt-1 bg-black border border-[#252a38] rounded p-1.5 font-mono text-white outline-none">
+                    <select value={corridorDirection} onChange={(e) => setCorridorDirection(e.target.value as any)} className="w-full mt-1 bg-black border border-[#334155] rounded p-1.5 font-mono text-white outline-none">
                       <option value="forward">Bay 1 $\rightarrow$ Last Bay</option>
                       <option value="reverse">Last Bay $\rightarrow$ Bay 1</option>
                     </select>
@@ -1188,22 +1188,22 @@ export default function App() {
             </div>
 
             {/* Explanation of the 3 sequence streams */}
-            <div className="bg-[#14171f] border border-[#252a38] p-5 rounded-xl flex flex-col gap-3 font-mono text-xs">
+            <div className="bg-[#0f172a] border border-[#334155] p-5 rounded-xl flex flex-col gap-3 font-mono text-xs">
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">Active Sequence Streams</h3>
               <div className="space-y-3 text-slate-300">
-                <div className="p-3 bg-black/40 border border-[#252a38] rounded-lg">
-                  <div className="text-emerald-400 font-bold mb-1">1. Pick Sequence (`PICK_SEQUENCE`)</div>
+                <div className="p-3 bg-black/40 border border-[#334155] rounded-lg">
+                  <div className="text-violet-400 font-bold mb-1">1. Pick Sequence (`PICK_SEQUENCE`)</div>
                   <p className="text-[11px] text-slate-400">
                     Traverses corridor pairs facing each other across bays (Aisle 1 Bay 1 $\rightarrow$ Aisle 2 Bay 1 $\rightarrow$ Bay 2...), then U-turns into the next pair from the back of the warehouse.
                   </p>
                 </div>
-                <div className="p-3 bg-black/40 border border-[#252a38] rounded-lg">
-                  <div className="text-cyan-400 font-bold mb-1">2. Putaway Sequence (`PUT_SEQUENCE`)</div>
+                <div className="p-3 bg-black/40 border border-[#334155] rounded-lg">
+                  <div className="text-fuchsia-400 font-bold mb-1">2. Putaway Sequence (`PUT_SEQUENCE`)</div>
                   <p className="text-[11px] text-slate-400">
                     Exact mathematical inverse of the picking sequence, avoiding operator collision and traffic bottlenecks between pickers and replenishment fork-trucks.
                   </p>
                 </div>
-                <div className="p-3 bg-black/40 border border-[#252a38] rounded-lg">
+                <div className="p-3 bg-black/40 border border-[#334155] rounded-lg">
                   <div className="text-purple-400 font-bold mb-1">3. Stock Check Sequence (`CHECK_SEQUENCE`)</div>
                   <p className="text-[11px] text-slate-400">
                     Scissors-lift operational route: travels Level A across all bays (1 $\rightarrow$ N) of an aisle, then elevates to Level B across all bays, through all levels before transitioning to the next aisle.
@@ -1216,19 +1216,19 @@ export default function App() {
 
         {/* TAB PASSES: CUSTOM TRUCK ROUTES */}
         {activeTab === 'passes' && (
-          <div className="p-6 bg-[#08090e] h-full overflow-auto flex flex-col gap-4">
+          <div className="p-6 bg-[#020617] h-full overflow-auto flex flex-col gap-4">
             <div>
               <h2 className="text-lg font-bold text-white mb-1">Pass Planner (Truck Routes)</h2>
               <p className="text-xs text-slate-400">Define the exact route passes the truck drives. Locations not captured by these passes will be pushed to the end.</p>
               {locations.length > 0 && locations[0].source === 'csv' && (
-                <p className="text-xs text-cyan-400 font-bold mt-1">Unique Aisles in uploaded data: {Array.from(new Set(locations.map(l => l.aisle))).sort().join(', ')}</p>
+                <p className="text-xs text-fuchsia-400 font-bold mt-1">Unique Aisles in uploaded data: {Array.from(new Set(locations.map(l => l.aisle))).sort().join(', ')}</p>
               )}
             </div>
             
-            <div className="border border-[#252a38] rounded-xl overflow-hidden bg-[#10131a] flex-1">
+            <div className="border border-[#334155] rounded-xl overflow-hidden bg-[#1e293b] flex-1">
               <table className="w-full border-collapse font-mono text-xs text-left">
                 <thead>
-                  <tr className="bg-[#14171f] text-slate-400 border-b border-[#252a38]">
+                  <tr className="bg-[#0f172a] text-slate-400 border-b border-[#334155]">
                     <th className="p-3">On</th>
                     <th className="p-3">Left Rack</th>
                     <th className="p-3">Right Rack</th>
@@ -1239,32 +1239,32 @@ export default function App() {
                     <th className="p-3">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1b2030]">
+                <tbody className="divide-y divide-[#1e293b]">
                   {passes.map((pass, i) => (
                     <tr key={pass.id} className="hover:bg-white/5 transition">
                       <td className="p-3">
-                        <input type="checkbox" checked={pass.on} onChange={e => { const np = [...passes]; np[i].on = e.target.checked; setPasses(np); }} className="w-4 h-4 rounded accent-emerald-500" />
+                        <input type="checkbox" checked={pass.on} onChange={e => { const np = [...passes]; np[i].on = e.target.checked; setPasses(np); }} className="w-4 h-4 rounded accent-violet-500" />
                       </td>
                       <td className="p-3">
-                        <input type="text" value={pass.leftRack} onChange={e => { const np = [...passes]; np[i].leftRack = e.target.value.toUpperCase(); setPasses(np); }} className="w-20 bg-black border border-[#252a38] rounded p-1 text-white outline-none" />
+                        <input type="text" value={pass.leftRack} onChange={e => { const np = [...passes]; np[i].leftRack = e.target.value.toUpperCase(); setPasses(np); }} className="w-20 bg-black border border-[#334155] rounded p-1 text-white outline-none" />
                       </td>
                       <td className="p-3">
-                        <input type="text" value={pass.rightRack} onChange={e => { const np = [...passes]; np[i].rightRack = e.target.value.toUpperCase(); setPasses(np); }} className="w-20 bg-black border border-[#252a38] rounded p-1 text-white outline-none" />
+                        <input type="text" value={pass.rightRack} onChange={e => { const np = [...passes]; np[i].rightRack = e.target.value.toUpperCase(); setPasses(np); }} className="w-20 bg-black border border-[#334155] rounded p-1 text-white outline-none" />
                       </td>
                       <td className="p-3">
-                        <input type="number" value={pass.fromBay} onChange={e => { const np = [...passes]; np[i].fromBay = parseInt(e.target.value)||1; setPasses(np); }} className="w-16 bg-black border border-[#252a38] rounded p-1 text-white outline-none" />
+                        <input type="number" value={pass.fromBay} onChange={e => { const np = [...passes]; np[i].fromBay = parseInt(e.target.value)||1; setPasses(np); }} className="w-16 bg-black border border-[#334155] rounded p-1 text-white outline-none" />
                       </td>
                       <td className="p-3">
-                        <input type="number" value={pass.toBay} onChange={e => { const np = [...passes]; np[i].toBay = parseInt(e.target.value)||1; setPasses(np); }} className="w-16 bg-black border border-[#252a38] rounded p-1 text-white outline-none" />
+                        <input type="number" value={pass.toBay} onChange={e => { const np = [...passes]; np[i].toBay = parseInt(e.target.value)||1; setPasses(np); }} className="w-16 bg-black border border-[#334155] rounded p-1 text-white outline-none" />
                       </td>
                       <td className="p-3">
-                        <select value={pass.levelDirection} onChange={e => { const np = [...passes]; np[i].levelDirection = e.target.value as any; setPasses(np); }} className="bg-black border border-[#252a38] rounded p-1 text-white outline-none">
+                        <select value={pass.levelDirection} onChange={e => { const np = [...passes]; np[i].levelDirection = e.target.value as any; setPasses(np); }} className="bg-black border border-[#334155] rounded p-1 text-white outline-none">
                           <option value="up">A to Top</option>
                           <option value="down">Top to A</option>
                         </select>
                       </td>
                       <td className="p-3">
-                        <select value={pass.bayFilter} onChange={e => { const np = [...passes]; np[i].bayFilter = e.target.value as any; setPasses(np); }} className="bg-black border border-[#252a38] rounded p-1 text-white outline-none">
+                        <select value={pass.bayFilter} onChange={e => { const np = [...passes]; np[i].bayFilter = e.target.value as any; setPasses(np); }} className="bg-black border border-[#334155] rounded p-1 text-white outline-none">
                           <option value="all">All</option>
                           <option value="even">Even Only</option>
                           <option value="odd">Odd Only</option>
@@ -1282,8 +1282,8 @@ export default function App() {
                 </tbody>
               </table>
               
-              <div className="p-4 border-t border-[#252a38] flex justify-between">
-                <button onClick={() => setPasses([...passes, { id: Date.now().toString(), on: true, leftRack: '', rightRack: '', fromBay: 1, toBay: 64, levelDirection: 'up', bayFilter: 'all' }])} className="px-3 py-1.5 bg-[#252a38] hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition">
+              <div className="p-4 border-t border-[#334155] flex justify-between">
+                <button onClick={() => setPasses([...passes, { id: Date.now().toString(), on: true, leftRack: '', rightRack: '', fromBay: 1, toBay: 64, levelDirection: 'up', bayFilter: 'all' }])} className="px-3 py-1.5 bg-[#334155] hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition">
                   <Plus className="w-3.5 h-3.5" /> Add Pass
                 </button>
                 <button onClick={applyPassesToLocations} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-lg shadow-lg shadow-amber-500/20 transition">
@@ -1296,27 +1296,27 @@ export default function App() {
 
         {/* TAB 4: DTO EXPORT & DATA TABLE */}
         {activeTab === 'export' && (
-          <div className="h-full flex flex-col p-6 bg-[#08090e] overflow-hidden gap-4">
+          <div className="h-full flex flex-col p-6 bg-[#020617] overflow-hidden gap-4">
             <div className="flex justify-between items-center shrink-0">
               <div>
                 <h2 className="text-sm font-bold text-white">RedPrairie DLx Dispatcher 2016.2 — Data Take-On (DTO) Export</h2>
                 <p className="text-xs text-slate-400">Export formatted records for Oracle `INTERFACE_LOCATION` database ingestion.</p>
               </div>
               <div className="flex gap-2">
-                <button onClick={exportToExcel} className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold rounded-lg text-xs transition flex items-center gap-1.5">
+                <button onClick={exportToExcel} className="px-3.5 py-1.5 bg-violet-500 hover:bg-violet-400 text-black font-extrabold rounded-lg text-xs transition flex items-center gap-1.5">
                   <Download className="w-3.5 h-3.5" /> Download .xlsx
                 </button>
-                <button onClick={exportToCsv} className="px-3.5 py-1.5 bg-[#252a38] hover:bg-slate-700 text-white font-bold rounded-lg text-xs transition flex items-center gap-1.5">
+                <button onClick={exportToCsv} className="px-3.5 py-1.5 bg-[#334155] hover:bg-slate-700 text-white font-bold rounded-lg text-xs transition flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5" /> Download .csv
                 </button>
               </div>
             </div>
 
             {/* Records Data Table Preview */}
-            <div className="flex-1 overflow-auto border border-[#252a38] rounded-xl bg-[#06070c]">
+            <div className="flex-1 overflow-auto border border-[#334155] rounded-xl bg-[#0f172a]">
               <table className="w-full border-collapse font-mono text-xs">
                 <thead>
-                  <tr className="bg-[#14171f] text-slate-400 border-b border-[#252a38] sticky top-0 text-left">
+                  <tr className="bg-[#0f172a] text-slate-400 border-b border-[#334155] sticky top-0 text-left">
                     <th className="p-2.5">PICK_SEQ</th>
                     <th className="p-2.5">PUT_SEQ</th>
                     <th className="p-2.5">CHECK_SEQ</th>
@@ -1330,7 +1330,7 @@ export default function App() {
                     <th className="p-2.5">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1b2030]">
+                <tbody className="divide-y divide-[#1e293b]">
                   {locations.length === 0 ? (
                     <tr>
                       <td colSpan={11} className="text-center text-slate-500 p-8">
@@ -1340,8 +1340,8 @@ export default function App() {
                   ) : (
                     locations.slice(0, 200).map((row, idx) => (
                       <tr key={idx} className={`hover:bg-white/5 ${row.isLocked ? 'bg-amber-500/10' : ''}`}>
-                        <td className="p-2.5 text-emerald-400 font-bold">{row.pickSeq}</td>
-                        <td className="p-2.5 text-cyan-400">{row.putSeq}</td>
+                        <td className="p-2.5 text-violet-400 font-bold">{row.pickSeq}</td>
+                        <td className="p-2.5 text-fuchsia-400">{row.putSeq}</td>
                         <td className="p-2.5 text-purple-400">{row.checkSeq}</td>
                         <td className="p-2.5 text-white font-bold">{row.id}</td>
                         <td className="p-2.5 text-slate-300">{row.aisle}</td>

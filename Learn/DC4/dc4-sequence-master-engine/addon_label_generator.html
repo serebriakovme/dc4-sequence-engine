@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Location Strip Label Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ══ Base ══════════════════════════════════════════════ */
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Courier New',monospace;background:#0b0e15;color:#e2e8f0;}
+
+/* ══ Input Screen ══════════════════════════════════════ */
+#input-screen{
+  min-height:100vh;display:flex;align-items:flex-start;justify-content:center;
+  padding:40px 20px 60px;
+  background:radial-gradient(ellipse 70% 45% at 50% 0%,rgba(59,130,246,.08) 0%,transparent 65%),#0b0e15;
+}
+.input-wrap{width:100%;max-width:780px;}
+
+.brand{display:flex;align-items:baseline;gap:14px;margin-bottom:28px;padding-bottom:18px;border-bottom:1px solid #1a2235;}
+.brand h1{font-size:21px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:#e2e8f0;}
+.brand h1 span{color:#3b82f6;}
+.brand .vtag{font-size:10px;color:#2d3a55;letter-spacing:2px;text-transform:uppercase;}
+
+/* Tabs */
+.itabs{display:flex;gap:2px;}
+.itab{
+  font-family:'Courier New',monospace;font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;
+  padding:7px 18px;cursor:pointer;background:transparent;
+  border:1px solid #1a2235;border-bottom:none;color:#2d3a55;
+  transition:all .15s;border-radius:2px 2px 0 0;
+}
+.itab.active{background:#111827;border-color:#1f2d45;color:#3b82f6;}
+.itab:hover:not(.active){border-color:#1f2d45;color:#4b5a77;}
+
+.tabwrap{background:#111827;border:1px solid #1f2d45;border-radius:0 2px 2px 2px;padding:20px;margin-bottom:18px;}
+.tabpane{display:none;}
+.tabpane.active{display:block;}
+
+textarea{
+  width:100%;background:#0b0e15;border:1px solid #1a2235;color:#c8d4e8;
+  font-family:'Courier New',monospace;font-size:12px;line-height:1.65;
+  padding:12px;resize:vertical;min-height:150px;outline:none;
+  transition:border-color .2s;border-radius:2px;
+}
+textarea:focus{border-color:#3b82f6;}
+.hint{font-size:10.5px;color:#2d3a55;margin-top:8px;line-height:1.75;}
+.hint strong{color:#4b5a77;}
+
+/* Manual table */
+.manual-wrap{overflow-x:auto;}
+#mTable{width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:12px;}
+#mTable th{background:#0b0e15;color:#2d3a55;font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;padding:7px 10px;border-bottom:1px solid #1a2235;text-align:left;}
+#mTable td{padding:3px;}
+#mTable input{width:100%;background:#0b0e15;border:1px solid #1a2235;color:#c8d4e8;font-family:'Courier New',monospace;font-size:12px;padding:6px 8px;outline:none;border-radius:1px;transition:border-color .15s;}
+#mTable input:focus{border-color:#3b82f6;}
+#mTable input.loc{min-width:180px;}
+#mTable input.chk{width:90px;}
+.del-btn{background:transparent;border:none;color:#2d3a55;cursor:pointer;font-size:14px;padding:4px 8px;transition:color .15s;}
+.del-btn:hover{color:#f87171;}
+.add-row-btn{margin-top:9px;width:100%;padding:7px;background:transparent;border:1px dashed #1a2235;color:#2d3a55;font-family:'Courier New',monospace;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .15s;border-radius:1px;}
+.add-row-btn:hover{border-color:#3b82f6;color:#3b82f6;}
+
+/* Upload */
+.filedrop{border:1px dashed #1a2235;border-radius:2px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.filedrop:hover,.filedrop.drag-over{background:rgba(59,130,246,.04);border-color:#3b82f6;}
+.filedrop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.filedrop .fi{font-size:26px;display:block;margin-bottom:8px;}
+.filedrop-txt{font-family:'Courier New',monospace;font-size:11.5px;color:#2d3a55;line-height:1.7;}
+.filedrop-txt strong{color:#3b82f6;}
+.fname{color:#34d399;margin-top:6px;font-size:10.5px;}
+
+/* Generate button */
+.cvt-btn{width:100%;padding:15px;background:transparent;border:1px solid #3b82f6;color:#3b82f6;font-family:'Courier New',monospace;font-weight:700;font-size:13px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:all .2s;margin-bottom:6px;}
+.cvt-btn::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(59,130,246,.15),transparent);transition:left .4s;}
+.cvt-btn:hover::before{left:100%;}
+.cvt-btn:hover{background:rgba(59,130,246,.07);box-shadow:0 0 22px rgba(59,130,246,.2);}
+.err-box{margin-top:8px;}
+.err-item{color:#f87171;font-size:11px;line-height:1.8;}
+
+/* ══ Toolbar ════════════════════════════════════════════ */
+#toolbar{display:none;position:fixed;top:0;left:0;right:0;background:#08090f;border-bottom:1px solid #1a2235;height:52px;padding:0 20px;z-index:1000;align-items:center;gap:10px;}
+.ttl{font-weight:700;font-size:11.5px;color:#3b82f6;letter-spacing:3.5px;text-transform:uppercase;flex-shrink:0;}
+.tstat{font-size:10.5px;color:#2d3a55;flex:1;padding-left:16px;}
+#toolbar button{padding:7px 14px;border:1px solid transparent;border-radius:2px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:1px;text-transform:uppercase;font-family:'Courier New',monospace;transition:all .15s;flex-shrink:0;}
+#btn-s{background:#111827;border-color:#1f2d45;color:#4b5a77;}
+#btn-s:hover{background:#1a2540;color:#e2e8f0;}
+#btn-n{background:transparent;border-color:#1a2235;color:#2d3a55;}
+#btn-n:hover{border-color:#2d3a55;color:#4b5a77;}
+#btn-p{background:#3b82f6;color:#fff;border-color:#3b82f6;}
+#btn-p:hover{background:#60a5fa;}
+
+/* ══ Settings Panel ═════════════════════════════════════ */
+#spanel{position:fixed;top:52px;right:0;background:#08090f;border-left:1px solid #1a2235;z-index:1001;width:385px;box-shadow:-10px 0 40px rgba(0,0,0,.75);max-height:calc(100vh - 52px);overflow:hidden;display:none;flex-direction:column;}
+.sphdr{background:#0d1119;border-bottom:1px solid #1a2235;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.sphdr span{font-weight:700;font-size:10.5px;color:#3b82f6;letter-spacing:2.5px;text-transform:uppercase;}
+.sphdr button{background:none;border:none;color:#2d3a55;font-size:16px;cursor:pointer;transition:color .15s;line-height:1;}
+.sphdr button:hover{color:#3b82f6;}
+.spbody{padding:14px 16px;overflow-y:auto;flex:1;}
+.spbody::-webkit-scrollbar{width:3px;}
+.spbody::-webkit-scrollbar-thumb{background:#1a2235;border-radius:2px;}
+
+.ss{margin-bottom:18px;}
+.ss h3{font-size:8.5px;text-transform:uppercase;letter-spacing:2.5px;color:#3b82f6;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid #111e33;}
+.sr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;}
+.sr label{font-size:10.5px;color:#4b5a77;flex:1;line-height:1.35;}
+.sr label small{display:block;font-size:9px;color:#1f2d45;margin-top:1px;}
+.sr input[type=color]{width:34px;height:23px;border:1px solid #1f2d45;border-radius:2px;cursor:pointer;padding:1px;background:#111827;flex-shrink:0;}
+.sr input[type=range]{width:85px;cursor:pointer;flex-shrink:0;accent-color:#3b82f6;}
+.sr input[type=number]{width:54px;padding:3px 6px;border:1px solid #1f2d45;background:#0b0e15;border-radius:2px;font-size:11px;text-align:center;color:#c8d4e8;font-family:'Courier New',monospace;flex-shrink:0;}
+.sr input[type=text]{padding:3px 7px;border:1px solid #1f2d45;background:#0b0e15;border-radius:2px;font-size:11px;color:#c8d4e8;font-family:'Courier New',monospace;flex-shrink:0;width:130px;}
+.sr input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3b82f6;flex-shrink:0;}
+.sr select{padding:3px 5px;border:1px solid #1f2d45;border-radius:2px;font-size:11px;background:#0b0e15;color:#c8d4e8;font-family:'Courier New',monospace;flex-shrink:0;}
+.sr input:focus,.sr select:focus{outline:none;border-color:#3b82f6;}
+.val{font-size:10px;color:#2d3a55;min-width:36px;text-align:right;flex-shrink:0;}
+
+/* Arrow grid */
+.agrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:4px;}
+.aitem{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.aitem .al{font-size:10px;font-weight:700;color:#3b82f6;letter-spacing:1px;}
+.aitem select{width:100%;padding:3px 1px;border:1px solid #1f2d45;border-radius:2px;font-size:11px;background:#0b0e15;color:#c8d4e8;text-align:center;cursor:pointer;}
+.aitem select:focus{outline:none;border-color:#3b82f6;}
+
+.btn-apply{width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:2px;font-size:10.5px;font-weight:700;cursor:pointer;letter-spacing:2px;text-transform:uppercase;font-family:'Courier New',monospace;transition:background .15s;}
+.btn-apply:hover{background:#60a5fa;}
+.btn-reset{width:100%;padding:7px;background:transparent;color:#2d3a55;border:1px solid #111e33;border-radius:2px;font-size:10px;cursor:pointer;margin-top:6px;letter-spacing:1px;text-transform:uppercase;font-family:'Courier New',monospace;transition:all .15s;}
+.btn-reset:hover{border-color:#1f2d45;color:#4b5a77;}
+
+/* ══ Pages ══════════════════════════════════════════════ */
+#pages{padding-top:60px;}
+.page{
+  background:white;
+  margin:8mm auto;
+  box-shadow:0 4px 28px rgba(0,0,0,.6);
+  width:200mm;
+  padding:4mm;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ══════════════════════════════════════════════════════
+   STRIP — 25mm tall
+   ┌──────────────────────────────────────────────────────┐  ← top border only
+   │     LOCATION          ▲      CHECK DIGIT            │
+   │  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓      │   ▓▓▓▓▓▓▓▓▓▓▓▓            │
+   │  M1-A-07-C-01          │       4Y                    │
+   └──────────────────────────────────────────────────────┘  ← bottom border only
+
+   3 columns: loc | arrow | chk
+   NO vertical borders
+   ALL text centred
+══════════════════════════════════════════════════════ */
+
+.strip{
+  height:25mm;
+  display:grid;
+  /* grid-template-columns set inline by JS */
+  background:white;
+  overflow:hidden;
+  flex-shrink:0;
+  /* only top + bottom borders — set inline */
+}
+
+/* ── shared column base ── */
+.col{
+  display:flex;
+  flex-direction:column;
+  align-items:center;     /* centre horizontally */
+  justify-content:flex-start;
+  overflow:hidden;
+}
+
+/* ── Section header: "LOCATION" / "CHECK DIGIT" ── */
+.sec-hdr{
+  font-family:Arial,Helvetica,sans-serif;
+  font-weight:700;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  color:#000;
+  text-align:center;
+  width:100%;
+  flex-shrink:0;
+  white-space:nowrap;
+  overflow:hidden;
+  padding-top:1mm;
+}
+
+/* ── Barcode row ── */
+.bc-row{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  min-height:0;
+  width:100%;
+  padding:0 1mm;
+}
+.bc-row svg{display:block;max-width:100%;}
+
+/* ── Bottom text (location ID or check digit value) ── */
+.bottom-txt{
+  font-family:'Arial Black',Arial,sans-serif;
+  font-weight:900;
+  color:#000;
+  text-align:center;
+  white-space:nowrap;
+  line-height:1;
+  padding:0 1mm 1.2mm;
+  flex-shrink:0;
+}
+
+/* ── Arrow column ── */
+.col-arrow{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  flex-shrink:0;
+}
+
+/* Thick solid SVG arrow — drawn inline by JS */
+.arrow-svg{
+  display:block;
+  flex-shrink:0;
+}
+
+/* ══ Print ══════════════════════════════════════════════ */
+@media print{
+  body{background:none;}
+  #toolbar,#input-screen,#spanel{display:none !important;}
+  #pages{padding-top:0;}
+  .page{margin:0;box-shadow:none;page-break-after:always;width:100%;}
+  .page:last-child{page-break-after:avoid;}
+  @page{size:A4 portrait;margin:5mm;}
+  *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;color-adjust:exact !important;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ INPUT SCREEN ═════════════════════════════════════ -->
+<div id="input-screen">
+  <div class="input-wrap">
+    <div class="brand">
+      <h1>▤ LOCATION <span>LABELS</span></h1>
+      <span class="vtag">// strip label generator · A4 portrait · 25 mm</span>
+    </div>
+
+    <div class="itabs">
+      <button class="itab active" onclick="switchTab('paste',this)">Paste Data</button>
+      <button class="itab"        onclick="switchTab('manual',this)">Manual Entry</button>
+      <button class="itab"        onclick="switchTab('upload',this)">Upload File</button>
+    </div>
+
+    <div class="tabwrap">
+      <!-- PASTE -->
+      <div class="tabpane active" id="tab-paste">
+        <textarea id="pasteInput" rows="9"
+          placeholder="Paste tab-separated or comma-separated data:
+Location&#9;CheckDigit
+M1A07C01&#9;4Y
+RTV71D1&#9;J2
+FL01A1&#9;3K"></textarea>
+        <div class="hint">
+          <strong>COLUMNS:</strong>&nbsp; Location &nbsp;·&nbsp; Check Digit &nbsp;—&nbsp;
+          Header row optional. Tab or comma delimited.
+        </div>
+      </div>
+
+      <!-- MANUAL -->
+      <div class="tabpane" id="tab-manual">
+        <div class="manual-wrap">
+          <table id="mTable">
+            <thead><tr><th>Location ID</th><th>Check Digit</th><th></th></tr></thead>
+            <tbody id="mBody">
+              <tr>
+                <td><input class="loc" type="text" placeholder="M1A07C01"></td>
+                <td><input class="chk" type="text" placeholder="4Y"></td>
+                <td><button class="del-btn" onclick="delRow(this)">✕</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button class="add-row-btn" onclick="addRow()">+ Add Row</button>
+      </div>
+
+      <!-- UPLOAD -->
+      <div class="tabpane" id="tab-upload">
+        <div class="filedrop" id="fileDrop">
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.tsv" onchange="handleFileInput(this)">
+          <span class="fi">📂</span>
+          <div class="filedrop-txt">
+            <strong>Click to browse</strong> or drag &amp; drop<br>
+            .xlsx &nbsp;·&nbsp; .xls &nbsp;·&nbsp; .csv &nbsp;·&nbsp; .txt &nbsp;·&nbsp; .tsv
+          </div>
+          <div class="fname" id="fName"></div>
+        </div>
+        <div class="hint" style="margin-top:10px">
+          Columns: <strong style="color:#c8d4e8">Location</strong> and
+          <strong style="color:#c8d4e8">CheckDigit</strong>
+          (or Check, Check_Digit, Chk…). Header optional.
+        </div>
+      </div>
+    </div>
+
+    <button class="cvt-btn" onclick="generate()">⚡ &nbsp; Generate Labels</button>
+    <div class="err-box" id="errBox"></div>
+  </div>
+</div>
+
+<!-- ══ TOOLBAR ═══════════════════════════════════════════ -->
+<div id="toolbar">
+  <span class="ttl">▤ Labels</span>
+  <span class="tstat" id="tstat"></span>
+  <button id="btn-s" onclick="openSettings()">⚙ Customise</button>
+  <button id="btn-n" onclick="goBack()">↩ Edit Data</button>
+  <button id="btn-p" onclick="window.print()">▲ Print</button>
+</div>
+
+<!-- ══ SETTINGS PANEL ═══════════════════════════════════ -->
+<div id="spanel">
+  <div class="sphdr">
+    <span>⚙ Customise Labels</span>
+    <button onclick="closeSettings()">✕</button>
+  </div>
+  <div class="spbody">
+
+    <div class="ss">
+      <h3>Level Detection</h3>
+      <div class="sr">
+        <label>Level character position
+          <small>1-indexed position in Location ID that is the level letter</small>
+        </label>
+        <input type="number" id="s-lvlpos" value="6" min="1" max="40">
+      </div>
+    </div>
+
+    <div class="ss">
+      <h3>Arrow Direction per Level (A – Z)</h3>
+      <div id="agrid" class="agrid"></div>
+    </div>
+
+    <div class="ss">
+      <h3>Location Display Format</h3>
+      <div class="sr">
+        <label>Insert dash after character positions
+          <small>Comma-separated · e.g. <strong style="color:#c8d4e8">2,3,5,6</strong> → M1-A-07-C-01<br>Barcode always reads the raw value</small>
+        </label>
+        <input type="text" id="s-dash" placeholder="e.g. 2,3,5,6" value="">
+      </div>
+    </div>
+
+    <div class="ss">
+      <h3>Column Widths (%)</h3>
+      <div class="sr">
+        <label>Location column width</label>
+        <input type="range" id="s-locw" min="30" max="75" value="50"
+          oninput="document.getElementById('v-locw').textContent=this.value+'%'">
+        <span class="val" id="v-locw">50%</span>
+      </div>
+      <div class="sr">
+        <label>Arrow column width</label>
+        <input type="range" id="s-arww" min="5" max="20" value="10"
+          oninput="document.getElementById('v-arww').textContent=this.value+'%'">
+        <span class="val" id="v-arww">10%</span>
+      </div>
+      <!-- Check digit column auto = remainder -->
+    </div>
+
+    <div class="ss">
+      <h3>Typography</h3>
+      <div class="sr">
+        <label>Section header size (pt)
+          <small>"LOCATION" / "CHECK DIGIT" label</small>
+        </label>
+        <input type="number" id="s-hdrfs" value="7" min="4" max="14">
+      </div>
+      <div class="sr">
+        <label>Custom "LOCATION" label text</label>
+        <input type="text" id="s-lochdr" value="LOCATION" style="width:110px">
+      </div>
+      <div class="sr">
+        <label>Custom "CHECK DIGIT" label text</label>
+        <input type="text" id="s-chkhdr" value="CHECK DIGIT" style="width:110px">
+      </div>
+    </div>
+
+    <div class="ss">
+      <h3>Arrow Size</h3>
+      <div class="sr">
+        <label>Arrow width (% of column)</label>
+        <input type="range" id="s-arwsize" min="20" max="95" value="45"
+          oninput="document.getElementById('v-arwsize').textContent=this.value+'%'">
+        <span class="val" id="v-arwsize">45%</span>
+      </div>
+    </div>
+
+    <div class="ss">
+      <h3>Barcodes</h3>
+      <div class="sr">
+        <label>Show location barcode</label>
+        <input type="checkbox" id="s-showlbc" checked>
+      </div>
+      <div class="sr">
+        <label>Show check digit barcode</label>
+        <input type="checkbox" id="s-showcbc" checked>
+      </div>
+      <div class="sr">
+        <label>Show human-readable text under barcodes</label>
+        <input type="checkbox" id="s-bctxt" checked>
+      </div>
+      <div class="sr">
+        <label>Barcode text size (pt)</label>
+        <input type="number" id="s-bctsz" value="28" min="4" max="28">
+      </div>
+      <div class="sr">
+        <label>Barcode text bold</label>
+        <input type="checkbox" id="s-bctxtbold" checked>
+      </div>
+      <div class="sr">
+        <label>Bar width (px)</label>
+        <input type="range" id="s-barw" min="0.5" max="3" step="0.5" value="1.5"
+          oninput="document.getElementById('v-barw').textContent=this.value+'px'">
+        <span class="val" id="v-barw">1.5px</span>
+      </div>
+      <div class="sr">
+        <label>Bar height (px)</label>
+        <input type="range" id="s-barh" min="10" max="55" value="40"
+          oninput="document.getElementById('v-barh').textContent=this.value+'px'">
+        <span class="val" id="v-barh">40px</span>
+      </div>
+    </div>
+
+    <div class="ss">
+      <h3>Visibility</h3>
+      <div class="sr">
+        <label>Show "LOCATION" header label</label>
+        <input type="checkbox" id="s-showlhdr" checked>
+      </div>
+      <div class="sr">
+        <label>Show "CHECK DIGIT" header label</label>
+        <input type="checkbox" id="s-showchdr" checked>
+      </div>
+      <div class="sr">
+        <label>Show arrow</label>
+        <input type="checkbox" id="s-showarw" checked>
+      </div>
+    </div>
+
+    <div class="ss">
+      <h3>Page &amp; Layout</h3>
+      <div class="sr">
+        <label>Strips per page</label>
+        <input type="number" id="s-perp" value="10" min="1" max="20">
+      </div>
+      <div class="sr">
+        <label>Gap between strips (mm)</label>
+        <input type="range" id="s-gap" min="0" max="6" step="0.5" value="0"
+          oninput="document.getElementById('v-gap').textContent=this.value+'mm'">
+        <span class="val" id="v-gap">0mm</span>
+      </div>
+      <div class="sr">
+        <label>Border colour</label>
+        <input type="color" id="c-bdr" value="#222222">
+      </div>
+      <div class="sr">
+        <label>Border thickness</label>
+        <select id="s-bdrt">
+          <option value="1px">1px</option>
+          <option value="1.5px">1.5px</option>
+          <option value="2px" selected>2px</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn-apply" onclick="applySettings()">✔ Apply Changes</button>
+    <button class="btn-reset"  onclick="resetSettings()">↺ Reset to Defaults</button>
+  </div>
+</div>
+
+<!-- ══ LABEL PAGES ══════════════════════════════════════ -->
+<div id="pages"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  CONSTANTS & DEFAULTS
+// ════════════════════════════════════════════════════════
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+const DEFAULTS = {
+  levelCharPos : 6,
+  dashPos      : '',
+  arrowConfig  : Object.fromEntries(LETTERS.map((l)=>[l, 'up'])),
+  locWidthPct  : 50,
+  arwWidthPct  : 10,
+  arwSizePct   : 45,
+  hdrFs        : 7,
+  locHdrTxt    : 'LOCATION',
+  chkHdrTxt    : 'CHECK DIGIT',
+  showLocBc    : true,
+  showChkBc    : true,
+  showBcTxt    : true,
+  bcTxtSz      : 28,
+  bcTxtBold    : true,
+  barW         : 1.5,
+  barH         : 40,
+  showLocHdr   : true,
+  showChkHdr   : true,
+  showArrow    : true,
+  perPage      : 10,
+  gap          : 0,
+  bdrCol       : '#222222',
+  bdrThk       : '2px',
+};
+
+let cfg     = JSON.parse(JSON.stringify(DEFAULTS));
+let curTab  = 'paste';
+let upRows  = null;
+let curRows = [];
+
+// ════════════════════════════════════════════════════════
+//  INPUT HANDLING
+// ════════════════════════════════════════════════════════
+function switchTab(name, btn){
+  curTab = name;
+  document.querySelectorAll('.itab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tabpane').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+function addRow(){
+  const tb=document.getElementById('mBody');
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td><input class="loc" type="text" placeholder="M1A07C01"></td>
+    <td><input class="chk" type="text" placeholder="4Y"></td>
+    <td><button class="del-btn" onclick="delRow(this)">✕</button></td>`;
+  tb.appendChild(tr);
+}
+function delRow(btn){
+  const tr=btn.closest('tr');
+  const tb=document.getElementById('mBody');
+  if(tb.rows.length>1) tr.remove();
+  else tr.querySelectorAll('input').forEach(i=>i.value='');
+}
+
+const fd=document.getElementById('fileDrop');
+fd.addEventListener('dragover',e=>{e.preventDefault();fd.classList.add('drag-over');});
+fd.addEventListener('dragleave',()=>fd.classList.remove('drag-over'));
+fd.addEventListener('drop',e=>{
+  e.preventDefault();fd.classList.remove('drag-over');
+  const f=e.dataTransfer.files[0];
+  if(f){document.getElementById('fileInput').files=e.dataTransfer.files;handleFileObj(f);}
+});
+function handleFileInput(inp){if(inp.files[0]) handleFileObj(inp.files[0]);}
+function handleFileObj(file){
+  document.getElementById('fName').textContent='✓ '+file.name;
+  const ext=file.name.split('.').pop().toLowerCase();
+  const rdr=new FileReader();
+  if(['csv','txt','tsv'].includes(ext)){
+    rdr.onload=e=>{upRows=parseDelim(e.target.result);};
+    rdr.readAsText(file);
+  } else {
+    rdr.onload=e=>{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      upRows=normXlsx(XLSX.utils.sheet_to_json(ws,{defval:''}));
+    };
+    rdr.readAsArrayBuffer(file);
+  }
+}
+function parseDelim(txt){
+  const lines=txt.trim().split(/\r?\n/);
+  if(!lines.length) return [];
+  const isHdr=/loc|check/i.test(lines[0].replace(/"/g,''));
+  return lines.slice(isHdr?1:0).map(l=>{
+    const d=l.includes('\t')?'\t':',';
+    const p=l.split(d).map(s=>s.trim().replace(/^"|"$/g,''));
+    return {loc:(p[0]||'').trim(), chk:(p[1]||'').trim()};
+  }).filter(r=>r.loc);
+}
+function normXlsx(rows){
+  return rows.map(r=>{
+    const fk=k=>Object.keys(r).find(x=>x.toLowerCase().replace(/[_ ]/g,'').includes(k));
+    const lk=fk('loc')||fk('location');
+    const ck=fk('check')||fk('chk')||fk('digit');
+    return {loc:String(r[lk]||'').trim(), chk:String(r[ck]||'').trim()};
+  }).filter(r=>r.loc);
+}
+function gatherRows(){
+  if(curTab==='manual'){
+    const rows=[];
+    document.querySelectorAll('#mBody tr').forEach(tr=>{
+      const i=tr.querySelectorAll('input');
+      if(i[0].value.trim()) rows.push({loc:i[0].value.trim(), chk:i[1].value.trim()});
+    });
+    return rows;
+  } else if(curTab==='paste'){
+    return parseDelim(document.getElementById('pasteInput').value.trim());
+  } else {
+    return upRows||[];
+  }
+}
+function generate(){
+  const rows=gatherRows();
+  document.getElementById('errBox').innerHTML='';
+  if(!rows.length){
+    document.getElementById('errBox').innerHTML='<div class="err-item">⚠ No data found. Enter or upload location data first.</div>';
+    return;
+  }
+  curRows=rows;
+  renderLabels();
+}
+
+// ════════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════════
+function parseDash(s){
+  if(!s||!s.trim()) return [];
+  return s.split(',').map(x=>parseInt(x.trim())).filter(n=>!isNaN(n)&&n>0);
+}
+function fmtLoc(raw,dp){
+  if(!dp.length) return raw;
+  let out='';
+  for(let i=0;i<raw.length;i++){
+    out+=raw[i];
+    if(dp.includes(i+1)&&i<raw.length-1) out+='-';
+  }
+  return out;
+}
+function arrowDir(lv){
+  return (cfg.arrowConfig[(lv||'').toUpperCase()]||'up')==='up';
+}
+
+/*  Build a thick solid SVG arrow (no unicode — pixel-perfect fill)
+    w, h in pixels (we set viewBox to match, scale via CSS)
+    direction: true = up, false = down                          */
+function makeSolidArrowSVG(pointUp, widthPx, heightPx){
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox',`0 0 ${widthPx} ${heightPx}`);
+  svg.setAttribute('width', widthPx+'px');
+  svg.setAttribute('height', heightPx+'px');
+  svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  svg.style.display='block';
+  svg.style.flexShrink='0';
+
+  /* Proportions (matching the bold arrow in the reference photo):
+     head = top 48% of height, shaft = bottom 52%
+     head width = 100%, shaft width = 38% centred                */
+  const W = widthPx, H = heightPx;
+  const headH  = H * 0.48;
+  const shaftW = W * 0.38;
+  const shaftX = (W - shaftW) / 2;
+
+  let points;
+  if(pointUp){
+    // Arrow pointing UP
+    // Head: triangle at top, shaft below
+    points = [
+      `${W/2},0`,              // apex
+      `${W},${headH}`,         // right of head base
+      `${shaftX+shaftW},${headH}`, // head base meets shaft right
+      `${shaftX+shaftW},${H}`, // shaft bottom right
+      `${shaftX},${H}`,        // shaft bottom left
+      `${shaftX},${headH}`,    // head base meets shaft left
+      `0,${headH}`,            // left of head base
+    ].join(' ');
+  } else {
+    // Arrow pointing DOWN
+    const shaftH = H * 0.52;
+    points = [
+      `${shaftX},0`,                   // shaft top left
+      `${shaftX+shaftW},0`,            // shaft top right
+      `${shaftX+shaftW},${shaftH}`,    // shaft bottom right → head base
+      `${W},${shaftH}`,                // right of head base
+      `${W/2},${H}`,                   // apex (bottom)
+      `0,${shaftH}`,                   // left of head base
+      `${shaftX},${shaftH}`,           // head base meets shaft left
+    ].join(' ');
+  }
+
+  const poly = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  poly.setAttribute('points', points);
+  poly.setAttribute('fill','#000000');
+  svg.appendChild(poly);
+  return svg;
+}
+
+function mkBcSvg(val){
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.dataset.val=val;
+  return svg;
+}
+
+function renderLabels(){
+  const pages=document.getElementById('pages');
+  pages.innerHTML='';
+
+  const dp       = parseDash(cfg.dashPos);
+  // Only top + bottom border, no left/right, no verticals
+  const bdrH     = `${cfg.bdrThk} solid ${cfg.bdrCol}`;
+  const chkWPct  = 100 - cfg.locWidthPct - cfg.arwWidthPct;
+  const gtc      = `${cfg.locWidthPct}% ${cfg.arwWidthPct}% ${Math.max(5,chkWPct)}%`;
+
+  let curPage=null, n=0;
+
+  curRows.forEach(({loc, chk})=>{
+    if(n%cfg.perPage===0){
+      curPage=document.createElement('div');
+      curPage.className='page';
+      curPage.style.gap=cfg.gap+'mm';
+      pages.appendChild(curPage);
+    }
+    n++;
+
+    const display  = fmtLoc(loc, dp);
+    const lvCh     = (loc.length>=cfg.levelCharPos) ? loc[cfg.levelCharPos-1].toUpperCase() : '';
+    const pointUp  = lvCh ? arrowDir(lvCh) : true;
+
+    // ── Strip ─────────────────────────────────────────────
+    const strip = document.createElement('div');
+    strip.className='strip';
+    strip.style.gridTemplateColumns = gtc;
+    strip.style.borderTop    = bdrH;
+    strip.style.borderBottom = bdrH;
+    strip.style.borderLeft   = 'none';
+    strip.style.borderRight  = 'none';
+
+    // ══════════════════════════════════════════════════════
+    //  COL 1  LOCATION
+    // ══════════════════════════════════════════════════════
+    const cLoc = document.createElement('div');
+    cLoc.className='col';
+
+    // Header
+    if(cfg.showLocHdr){
+      const hdr=document.createElement('div');
+      hdr.className='sec-hdr';
+      hdr.style.fontSize=cfg.hdrFs+'pt';
+      hdr.textContent=cfg.locHdrTxt;
+      cLoc.appendChild(hdr);
+    }
+
+    // Barcode
+    if(cfg.showLocBc){
+      const br=document.createElement('div');
+      br.className='bc-row';
+      const locSvg = mkBcSvg(loc);
+      locSvg.dataset.display = display;   // formatted text (with dashes)
+      br.appendChild(locSvg);
+      cLoc.appendChild(br);
+    }
+
+
+
+    // ══════════════════════════════════════════════════════
+    //  COL 2  ARROW
+    // ══════════════════════════════════════════════════════
+    const cArw = document.createElement('div');
+    cArw.className='col col-arrow';
+
+    if(cfg.showArrow){
+      // We'll size the arrow at render time once the element is in DOM
+      // Store params as data attrs; actual SVG built after layout
+      cArw.dataset.pointUp  = pointUp ? '1' : '0';
+      cArw.dataset.sizePct  = cfg.arwSizePct;
+    }
+
+    // ══════════════════════════════════════════════════════
+    //  COL 3  CHECK DIGIT
+    // ══════════════════════════════════════════════════════
+    const cChk = document.createElement('div');
+    cChk.className='col';
+
+    // Header
+    if(cfg.showChkHdr){
+      const hdr=document.createElement('div');
+      hdr.className='sec-hdr';
+      hdr.style.fontSize=cfg.hdrFs+'pt';
+      hdr.textContent=cfg.chkHdrTxt;
+      cChk.appendChild(hdr);
+    }
+
+    // Barcode
+    if(cfg.showChkBc && chk){
+      const br=document.createElement('div');
+      br.className='bc-row';
+      br.appendChild(mkBcSvg(chk));
+      cChk.appendChild(br);
+    }
+
+
+
+    strip.appendChild(cLoc);
+    strip.appendChild(cArw);
+    strip.appendChild(cChk);
+    curPage.appendChild(strip);
+  });
+
+  // ── Render barcodes ──────────────────────────────────
+  document.querySelectorAll('.bc-row svg[data-val]').forEach(svg=>{
+    if(!svg.dataset.val) return;
+    try{
+      JsBarcode(svg, svg.dataset.val,{
+        format      :'CODE128',
+        width       :parseFloat(cfg.barW)||1,
+        height      :parseInt(cfg.barH)||28,
+        displayValue:cfg.showBcTxt,
+        text        : svg.dataset.display || svg.dataset.val,
+        fontSize    :cfg.bcTxtSz,
+        fontOptions :cfg.bcTxtBold ? 'bold' : '',
+        margin      :2,
+        background  :'#ffffff',
+        lineColor   :'#000000',
+      });
+    }catch(e){console.warn('BC:',svg.dataset.val,e);}
+  });
+
+  // ── Build solid SVG arrows (after layout so we know column dims) ──
+  requestAnimationFrame(()=>{
+    document.querySelectorAll('.col-arrow[data-point-up]').forEach(col=>{
+      const rect     = col.getBoundingClientRect();
+      const colW     = rect.width;
+      const colH     = rect.height;
+      const pct      = parseInt(col.dataset.sizePct)||65;
+      const arwW     = Math.round(colW * pct / 100);
+      const arwH     = Math.round(colH * 0.72);   // arrow fills ~72% of cell height
+      const pointUp  = col.dataset.pointUp === '1';
+      const arrowEl  = makeSolidArrowSVG(pointUp, arwW, arwH);
+      col.appendChild(arrowEl);
+    });
+  });
+
+  // Show toolbar
+  document.getElementById('input-screen').style.display='none';
+  document.getElementById('toolbar').style.display='flex';
+  const pg=Math.ceil(curRows.length/cfg.perPage);
+  document.getElementById('tstat').textContent=
+    `${curRows.length} label${curRows.length!==1?'s':''} · ${pg} page${pg!==1?'s':''}`;
+}
+
+// ════════════════════════════════════════════════════════
+//  SETTINGS
+// ════════════════════════════════════════════════════════
+function openSettings(){
+  buildArrowGrid();
+  syncUI();
+  document.getElementById('spanel').style.display='flex';
+}
+function closeSettings(){
+  document.getElementById('spanel').style.display='none';
+}
+function buildArrowGrid(){
+  const g=document.getElementById('agrid');
+  g.innerHTML='';
+  LETTERS.forEach(l=>{
+    const item=document.createElement('div');item.className='aitem';
+    const lbl=document.createElement('div');lbl.className='al';lbl.textContent=l;
+    const sel=document.createElement('select');sel.id='a-'+l;
+    const cur=cfg.arrowConfig[l]||'up';
+    sel.innerHTML=`<option value="up"${cur==='up'?' selected':''}>↑</option>`+
+                  `<option value="down"${cur==='down'?' selected':''}>↓</option>`;
+    item.appendChild(lbl);item.appendChild(sel);
+    g.appendChild(item);
+  });
+}
+function syncUI(){
+  sv('s-lvlpos',  cfg.levelCharPos);
+  sv('s-dash',    cfg.dashPos);
+  srl('s-locw','v-locw',  cfg.locWidthPct,'%');
+  srl('s-arww','v-arww',  cfg.arwWidthPct,'%');
+  srl('s-arwsize','v-arwsize',cfg.arwSizePct,'%');
+  sv('s-hdrfs',   cfg.hdrFs);
+  sv('s-lochdr',  cfg.locHdrTxt);
+  sv('s-chkhdr',  cfg.chkHdrTxt);
+  sc('s-showlbc', cfg.showLocBc);
+  sc('s-showcbc', cfg.showChkBc);
+  sc('s-bctxt',   cfg.showBcTxt);
+  sv('s-bctsz',   cfg.bcTxtSz);
+  sc('s-bctxtbold',cfg.bcTxtBold);
+  srl('s-barw','v-barw',cfg.barW,'px');
+  srl('s-barh','v-barh',cfg.barH,'px');
+  sc('s-showlhdr',cfg.showLocHdr);
+  sc('s-showchdr',cfg.showChkHdr);
+  sc('s-showarw', cfg.showArrow);
+  sv('s-perp',    cfg.perPage);
+  srl('s-gap','v-gap',cfg.gap,'mm');
+  sv('c-bdr',     cfg.bdrCol);
+  sv('s-bdrt',    cfg.bdrThk);
+}
+function sv(id,v){const e=document.getElementById(id);if(e)e.value=v;}
+function sc(id,v){const e=document.getElementById(id);if(e)e.checked=v;}
+function srl(rid,vid,v,u){sv(rid,v);const e=document.getElementById(vid);if(e)e.textContent=v+u;}
+
+function applySettings(){
+  const ac={};
+  LETTERS.forEach(l=>{const e=document.getElementById('a-'+l);ac[l]=e?e.value:'up';});
+  cfg={
+    levelCharPos : gn('s-lvlpos',6),
+    dashPos      : gs('s-dash'),
+    arrowConfig  : ac,
+    locWidthPct  : gn('s-locw',50),
+    arwWidthPct  : gn('s-arww',10),
+    arwSizePct   : gn('s-arwsize',65),
+    hdrFs        : gn('s-hdrfs',7),
+    locHdrTxt    : gs('s-lochdr')||'LOCATION',
+    chkHdrTxt    : gs('s-chkhdr')||'CHECK DIGIT',
+    showLocBc    : gc('s-showlbc'),
+    showChkBc    : gc('s-showcbc'),
+    showBcTxt    : gc('s-bctxt'),
+    bcTxtSz      : gn('s-bctsz',13),
+    bcTxtBold    : gc('s-bctxtbold'),
+    barW         : parseFloat(document.getElementById('s-barw').value)||1,
+    barH         : gn('s-barh',28),
+    showLocHdr   : gc('s-showlhdr'),
+    showChkHdr   : gc('s-showchdr'),
+    showArrow    : gc('s-showarw'),
+    perPage      : gn('s-perp',10),
+    gap          : parseFloat(document.getElementById('s-gap').value)||0,
+    bdrCol       : gs('c-bdr'),
+    bdrThk       : gs('s-bdrt'),
+  };
+  if(curRows.length) renderLabels();
+}
+function resetSettings(){
+  cfg=JSON.parse(JSON.stringify(DEFAULTS));
+  buildArrowGrid();
+  syncUI();
+  if(curRows.length) renderLabels();
+}
+function gn(id,fb=0){return parseInt(document.getElementById(id)?.value)||fb;}
+function gs(id){return document.getElementById(id)?.value||'';}
+function gc(id){return !!document.getElementById(id)?.checked;}
+
+function goBack(){
+  document.getElementById('input-screen').style.display='flex';
+  document.getElementById('toolbar').style.display='none';
+  document.getElementById('spanel').style.display='none';
+  document.getElementById('pages').innerHTML='';
+}
+</script>
+</body>
+</html>
