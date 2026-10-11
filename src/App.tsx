@@ -14,6 +14,7 @@ import {
 interface PassConfig {
   id: string;
   on: boolean;
+  mode?: 'paired' | 'single';
   leftRack: string;
   rightRack: string;
   fromBay: number;
@@ -335,33 +336,86 @@ export default function App() {
     // 1. Identify unique aisles and sort them according to corridor direction
     const uniqueAislesList = Array.from(new Set(locations.map(l => l.aisle))).sort();
     if (corridorDirection === 'reverse') uniqueAislesList.reverse();
+
+    // Helper: detect if an aisle is a single-aisle corridor with odd-left / even-right (e.g. AV, AU... AK)
+    const isSingleOddEvenAisle = (aisleName: string): boolean => {
+      return /^[A-Z]{2}$/.test(aisleName.trim().toUpperCase());
+    };
+
+    // 2. Build corridor groups (single odd/even corridors vs paired rack corridors)
+    interface CorridorGroup {
+      type: 'single' | 'paired';
+      leftAisle: string;
+      rightAisle: string;
+    }
+    const corridorGroups: CorridorGroup[] = [];
+    let aIdx = 0;
+    while (aIdx < uniqueAislesList.length) {
+      const a1 = uniqueAislesList[aIdx];
+      if (isSingleOddEvenAisle(a1)) {
+        corridorGroups.push({ type: 'single', leftAisle: a1, rightAisle: '' });
+        aIdx++;
+      } else {
+        const a2 = uniqueAislesList[aIdx + 1];
+        if (a2 && !isSingleOddEvenAisle(a2) && a1.slice(0, 1) === a2.slice(0, 1)) {
+          corridorGroups.push({ type: 'paired', leftAisle: a1, rightAisle: a2 });
+          aIdx += 2;
+        } else {
+          corridorGroups.push({ type: 'paired', leftAisle: a1, rightAisle: '' });
+          aIdx++;
+        }
+      }
+    }
     
-    // 2. Sort the locations array based on Pick Sequence Engine logic
+    // 3. Sort locations based on Corridor Group routing
     const sortedLocations = [...locations].sort((a, b) => {
-      const aAisleIdx = uniqueAislesList.indexOf(a.aisle);
-      const bAisleIdx = uniqueAislesList.indexOf(b.aisle);
+      const gIdxA = corridorGroups.findIndex(g => g.leftAisle === a.aisle || g.rightAisle === a.aisle);
+      const gIdxB = corridorGroups.findIndex(g => g.leftAisle === b.aisle || g.rightAisle === b.aisle);
       
-      const aPairIdx = Math.floor(aAisleIdx / 2);
-      const bPairIdx = Math.floor(bAisleIdx / 2);
+      if (gIdxA !== gIdxB) return gIdxA - gIdxB;
+      if (gIdxA === -1) return 0;
       
-      if (aPairIdx !== bPairIdx) return aPairIdx - bPairIdx;
-      
-      const isUTurn = pairTransition === 'uturn' && aPairIdx % 2 === 1;
-      const aEffectiveBay = isUTurn ? 9999 - a.bay : a.bay;
-      const bEffectiveBay = isUTurn ? 9999 - b.bay : b.bay;
-      
-      if (aEffectiveBay !== bEffectiveBay) return aEffectiveBay - bEffectiveBay;
-      
-      if (a.level !== b.level) return a.level.localeCompare(b.level);
-      
-      const aAisleInPair = aAisleIdx % 2;
-      const bAisleInPair = bAisleIdx % 2;
-      if (aAisleInPair !== bAisleInPair) return aAisleInPair - bAisleInPair;
-      
-      return a.position - b.position;
+      const group = corridorGroups[gIdxA];
+      const isUTurn = pairTransition === 'uturn' && (gIdxA % 2 === 1);
+
+      if (group.type === 'single') {
+        // Single Aisle (e.g. AV, AU... AK):
+        // Physical corridor step = Math.ceil(bay / 2) -> (Bay 1 & 2 = step 1, Bay 3 & 4 = step 2)
+        const stepA = Math.ceil(a.bay / 2);
+        const stepB = Math.ceil(b.bay / 2);
+        const effectiveStepA = isUTurn ? 9999 - stepA : stepA;
+        const effectiveStepB = isUTurn ? 9999 - stepB : stepB;
+
+        if (effectiveStepA !== effectiveStepB) return effectiveStepA - effectiveStepB;
+
+        // Within same physical bay step:
+        // Zig-zag Left (Odd Bay) -> Right (Even Bay)
+        const sideA = a.bay % 2 === 1 ? -1 : 1;
+        const sideB = b.bay % 2 === 1 ? -1 : 1;
+        if (sideA !== sideB) return sideA - sideB;
+
+        // Level traversal
+        if (a.level !== b.level) return a.level.localeCompare(b.level);
+
+        return a.position - b.position;
+      } else {
+        // Paired Corridors (e.g. E16 & E17)
+        const effectiveBayA = isUTurn ? 9999 - a.bay : a.bay;
+        const effectiveBayB = isUTurn ? 9999 - b.bay : b.bay;
+        
+        if (effectiveBayA !== effectiveBayB) return effectiveBayA - effectiveBayB;
+        
+        if (a.level !== b.level) return a.level.localeCompare(b.level);
+        
+        const aIsLeft = a.aisle === group.leftAisle ? -1 : 1;
+        const bIsLeft = b.aisle === group.leftAisle ? -1 : 1;
+        if (aIsLeft !== bIsLeft) return aIsLeft - bIsLeft;
+        
+        return a.position - b.position;
+      }
     });
 
-    // 3. Re-assign Pick and Putaway sequences
+    // 4. Re-assign Pick and Putaway sequences
     let currentPickSeq = seqStart;
     sortedLocations.forEach(loc => {
       loc.pickSeq = currentPickSeq;
@@ -374,7 +428,7 @@ export default function App() {
       currentPutSeq += seqStep;
     });
 
-    // 4. Re-assign Check sequences (Aisle -> Level -> Bay -> Position)
+    // 5. Re-assign Check sequences (Aisle -> Level -> Bay -> Position)
     const checkSorted = [...locations].sort((a, b) => {
       const aAisleIdx = uniqueAislesList.indexOf(a.aisle);
       const bAisleIdx = uniqueAislesList.indexOf(b.aisle);
@@ -395,15 +449,31 @@ export default function App() {
     });
 
     setLocations(sortedLocations);
-    setCsvStatus({ type: 'ok', message: `Successfully re-sequenced ${sortedLocations.length.toLocaleString()} imported locations!` });
+    setCsvStatus({ type: 'ok', message: `Successfully re-sequenced ${sortedLocations.length.toLocaleString()} locations with corridor & odd/even routing!` });
     setActiveTab('map');
   };
 
   const applyPassesToLocations = () => {
     if (!locations.length) return;
     const sorted = [...locations].sort((a, b) => {
-      const passIdxA = passes.findIndex(p => p.on && (p.leftRack === a.aisle || p.rightRack === a.aisle) && a.bay >= Math.min(p.fromBay, p.toBay) && a.bay <= Math.max(p.fromBay, p.toBay) && (p.bayFilter === 'all' || (p.bayFilter === 'even' && a.bay % 2 === 0) || (p.bayFilter === 'odd' && a.bay % 2 === 1)));
-      const passIdxB = passes.findIndex(p => p.on && (p.leftRack === b.aisle || p.rightRack === b.aisle) && b.bay >= Math.min(p.fromBay, p.toBay) && b.bay <= Math.max(p.fromBay, p.toBay) && (p.bayFilter === 'all' || (p.bayFilter === 'even' && b.bay % 2 === 0) || (p.bayFilter === 'odd' && b.bay % 2 === 1)));
+      const matchPass = (loc: LocationRecord, p: PassConfig) => {
+        if (!p.on) return false;
+        const minBay = Math.min(p.fromBay, p.toBay);
+        const maxBay = Math.max(p.fromBay, p.toBay);
+        if (loc.bay < minBay || loc.bay > maxBay) return false;
+        if (p.bayFilter === 'even' && loc.bay % 2 !== 0) return false;
+        if (p.bayFilter === 'odd' && loc.bay % 2 === 0) return false;
+        
+        const isSingle = p.mode === 'single' || p.rightRack === '' || p.rightRack === p.leftRack;
+        if (isSingle) {
+          return loc.aisle === p.leftRack;
+        } else {
+          return loc.aisle === p.leftRack || loc.aisle === p.rightRack;
+        }
+      };
+
+      const passIdxA = passes.findIndex(p => matchPass(a, p));
+      const passIdxB = passes.findIndex(p => matchPass(b, p));
       
       if (passIdxA === -1 && passIdxB === -1) return 0;
       if (passIdxA === -1) return 1;
@@ -412,21 +482,49 @@ export default function App() {
       if (passIdxA !== passIdxB) return passIdxA - passIdxB;
       
       const pass = passes[passIdxA];
-      if (a.bay !== b.bay) {
-         const baySign = Math.sign(pass.toBay - pass.fromBay) || 1;
-         return (a.bay - b.bay) * baySign;
+      const isSingle = pass.mode === 'single' || pass.rightRack === '' || pass.rightRack === pass.leftRack;
+
+      if (isSingle) {
+        // Single Aisle: Odd bays on Left, Even bays on Right
+        // Physical corridor bay pair = Math.ceil(bay / 2)
+        const stepA = Math.ceil(a.bay / 2);
+        const stepB = Math.ceil(b.bay / 2);
+        const stepSign = Math.sign(pass.toBay - pass.fromBay) || 1;
+
+        if (stepA !== stepB) {
+          return (stepA - stepB) * stepSign;
+        }
+
+        // Within same corridor step: Left (Odd: 1, 3, 5...) then Right (Even: 2, 4, 6...)
+        const sideA = a.bay % 2 === 1 ? -1 : 1;
+        const sideB = b.bay % 2 === 1 ? -1 : 1;
+        if (sideA !== sideB) return sideA - sideB;
+
+        // Level direction
+        if (a.level !== b.level) {
+          const lvlSign = pass.levelDirection === 'up' ? 1 : -1;
+          return a.level.localeCompare(b.level) * lvlSign;
+        }
+
+        return a.position - b.position;
+      } else {
+        // Paired Racks (e.g. Left Rack E16, Right Rack E17)
+        if (a.bay !== b.bay) {
+          const baySign = Math.sign(pass.toBay - pass.fromBay) || 1;
+          return (a.bay - b.bay) * baySign;
+        }
+
+        const aIsLeft = a.aisle === pass.leftRack;
+        const bIsLeft = b.aisle === pass.leftRack;
+        if (aIsLeft !== bIsLeft) return aIsLeft ? -1 : 1;
+        
+        if (a.level !== b.level) {
+          const lvlSign = pass.levelDirection === 'up' ? 1 : -1;
+          return a.level.localeCompare(b.level) * lvlSign;
+        }
+        
+        return a.position - b.position;
       }
-      
-      if (a.level !== b.level) {
-         const lvlSign = pass.levelDirection === 'up' ? 1 : -1;
-         return a.level.localeCompare(b.level) * lvlSign;
-      }
-      
-      const aIsLeft = a.aisle === pass.leftRack;
-      const bIsLeft = b.aisle === pass.leftRack;
-      if (aIsLeft !== bIsLeft) return aIsLeft ? -1 : 1;
-      
-      return a.position - b.position;
     });
 
     let pick = seqStart;
@@ -435,8 +533,56 @@ export default function App() {
     [...sorted].reverse().forEach(l => { l.putSeq = put; put += seqStep; });
     
     setLocations(sorted);
-    setCsvStatus({ type: 'ok', message: `Applied Pass rules to ${sorted.length} locations!` });
+    setCsvStatus({ type: 'ok', message: `Applied Pass rules to ${sorted.length.toLocaleString()} locations!` });
     setActiveTab('map');
+  };
+
+  // Quick Preset Handlers for DC4 Passes
+  const loadPresetDc4Aisles = () => {
+    // Aisles AV down to AK (AV, AU, AT, AS, AR, AQ, AP, AN, AM, AL, AK)
+    const aAisles = ['AV', 'AU', 'AT', 'AS', 'AR', 'AQ', 'AP', 'AN', 'AM', 'AL', 'AK'];
+    const maxB = locations.length ? Math.max(...locations.filter(l => aAisles.includes(l.aisle)).map(l => l.bay), 72) : 72;
+    const newPasses: PassConfig[] = aAisles.map((aisle, idx) => ({
+      id: `pass_dc4_${aisle}_${Date.now()}_${idx}`,
+      on: true,
+      mode: 'single',
+      leftRack: aisle,
+      rightRack: '',
+      fromBay: idx % 2 === 0 ? 1 : maxB,
+      toBay: idx % 2 === 0 ? maxB : 1,
+      levelDirection: 'up',
+      bayFilter: 'all'
+    }));
+    setPasses(newPasses);
+    setCsvStatus({ type: 'ok', message: `Loaded DC4 AV–AK serpentine passes (11 single-aisle odd/even passes)!` });
+  };
+
+  const loadPresetDc4EAisles = () => {
+    // E aisles: E16/E17, E14/E15, E12/E13, E10/E11, E08/E09, E06/E07, E04/E05, E02/E03, E01
+    const pairs = [
+      { left: 'E16', right: 'E17', from: 1, to: 72 },
+      { left: 'E14', right: 'E15', from: 72, to: 1 },
+      { left: 'E12', right: 'E13', from: 1, to: 72 },
+      { left: 'E10', right: 'E11', from: 72, to: 1 },
+      { left: 'E08', right: 'E09', from: 1, to: 72 },
+      { left: 'E06', right: 'E07', from: 72, to: 1 },
+      { left: 'E04', right: 'E05', from: 1, to: 72 },
+      { left: 'E02', right: 'E03', from: 72, to: 1 },
+      { left: 'E01', right: '', from: 1, to: 72 }
+    ];
+    const newPasses: PassConfig[] = pairs.map((p, idx) => ({
+      id: `pass_dc4_E_${Date.now()}_${idx}`,
+      on: true,
+      mode: p.right ? 'paired' : 'single',
+      leftRack: p.left,
+      rightRack: p.right,
+      fromBay: p.from,
+      toBay: p.to,
+      levelDirection: 'up',
+      bayFilter: 'all'
+    }));
+    setPasses(newPasses);
+    setCsvStatus({ type: 'ok', message: `Loaded DC4 E-aisles passes (E17–E01 corridors)!` });
   };
 
   // CSV Import Parser
@@ -471,6 +617,7 @@ export default function App() {
         locId = locId.toUpperCase();
 
         // Extract regex pattern if possible: e.g. A01004A -> Aisle A01, bayCode 004, Level A
+        // Extract regex pattern if possible: e.g. AV006A -> Aisle AV, Bay 6, Level A
         let aisle = aisleIdx >= 0 && parts[aisleIdx] ? parts[aisleIdx] : '';
         let bay = bayIdx >= 0 && parts[bayIdx] ? parseInt(parts[bayIdx], 10) : 1;
         let pos = posIdx >= 0 && parts[posIdx] ? parseInt(parts[posIdx], 10) : 1;
@@ -480,11 +627,25 @@ export default function App() {
         if (match) {
           if (!aisle) aisle = match[1];
           const rawSeq = parseInt(match[2], 10);
-          bay = Math.ceil(rawSeq / 3) || 1;
-          pos = ((rawSeq - 1) % 3) + 1;
+          if (bayIdx < 0) {
+            bay = rawSeq;
+            pos = 1;
+          }
           level = match[3];
         } else if (!aisle) {
           aisle = locId.slice(0, 3) || 'A01';
+        }
+
+        let side = sideIdx >= 0 ? parts[sideIdx] : '';
+        if (!side) {
+          if (/^[A-Z]{2}$/.test(aisle)) {
+            // A-aisles (AV to AK): Odd bay numbers on the left, even on the right
+            side = bay % 2 === 1 ? 'L' : 'R';
+          } else {
+            const numMatch = aisle.match(/\d+/);
+            const num = numMatch ? parseInt(numMatch[0], 10) : NaN;
+            side = !isNaN(num) && num % 2 === 0 ? 'L' : 'R';
+          }
         }
 
         const isLock = lockIdx >= 0 && /LOCK|BLACK|YES|Y|TRUE/i.test(parts[lockIdx]);
@@ -495,7 +656,7 @@ export default function App() {
           bay: isNaN(bay) ? 1 : bay,
           position: isNaN(pos) ? 1 : pos,
           level,
-          side: sideIdx >= 0 ? parts[sideIdx] : 'R',
+          side: side || 'R',
           isLocked: isLock,
           lockStatus: isLock ? 'Locked' : 'Unlock',
           pickSeq: pickIdx >= 0 && parseInt(parts[pickIdx], 10) ? parseInt(parts[pickIdx], 10) : seqCounter,
@@ -520,20 +681,48 @@ export default function App() {
       
       const uniqueImportedAisles = Array.from(new Set(imported.map(l => l.aisle))).sort();
       if (passes.length === 0 && uniqueImportedAisles.length > 0) {
-         const defaultPasses = [];
-         for(let i=0; i<uniqueImportedAisles.length; i+=2) {
-           defaultPasses.push({
-             id: Date.now().toString() + i,
-             on: true,
-             leftRack: uniqueImportedAisles[i],
-             rightRack: uniqueImportedAisles[i+1] || '',
-             fromBay: 1,
-             toBay: Math.max(...imported.filter(l => l.aisle === uniqueImportedAisles[i]).map(l => l.bay), 1),
-             levelDirection: 'up' as const,
-             bayFilter: 'all' as const
-           });
-         }
-         setPasses(defaultPasses);
+        const defaultPasses: PassConfig[] = [];
+        let pCount = 0;
+        let idx = 0;
+        while (idx < uniqueImportedAisles.length) {
+          const a1 = uniqueImportedAisles[idx];
+          const isSingle = /^[A-Z]{2}$/.test(a1);
+          const isReverse = pCount % 2 === 1;
+
+          if (isSingle) {
+            const maxB = Math.max(...imported.filter(l => l.aisle === a1).map(l => l.bay), 1);
+            defaultPasses.push({
+              id: Date.now().toString() + '_' + pCount,
+              on: true,
+              mode: 'single',
+              leftRack: a1,
+              rightRack: '',
+              fromBay: isReverse ? maxB : 1,
+              toBay: isReverse ? 1 : maxB,
+              levelDirection: 'up',
+              bayFilter: 'all'
+            });
+            pCount++;
+            idx++;
+          } else {
+            const a2 = uniqueImportedAisles[idx + 1];
+            const maxB = Math.max(...imported.filter(l => l.aisle === a1 || l.aisle === a2).map(l => l.bay), 1);
+            defaultPasses.push({
+              id: Date.now().toString() + '_' + pCount,
+              on: true,
+              mode: a2 ? 'paired' : 'single',
+              leftRack: a1,
+              rightRack: a2 || '',
+              fromBay: isReverse ? maxB : 1,
+              toBay: isReverse ? 1 : maxB,
+              levelDirection: 'up',
+              bayFilter: 'all'
+            });
+            pCount++;
+            idx += a2 ? 2 : 1;
+          }
+        }
+        setPasses(defaultPasses);
       }
       setCsvStatus({ type: 'ok', message: `Successfully parsed ${imported.length.toLocaleString()} locations. Please configure Passes.` });
       setActiveTab('passes');
@@ -1187,15 +1376,21 @@ export default function App() {
               </div>
             </div>
 
-            {/* Explanation of the 3 sequence streams */}
+            {/* Explanation of the sequence streams */}
             <div className="bg-[#0f172a] border border-[#334155] p-5 rounded-xl flex flex-col gap-3 font-mono text-xs">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">Active Sequence Streams</h3>
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider">Active Sequence Streams & DC4 Routing Logic</h3>
               <div className="space-y-3 text-slate-300">
                 <div className="p-3 bg-black/40 border border-[#334155] rounded-lg">
                   <div className="text-violet-400 font-bold mb-1">1. Pick Sequence (`PICK_SEQUENCE`)</div>
-                  <p className="text-[11px] text-slate-400">
-                    Traverses corridor pairs facing each other across bays (Aisle 1 Bay 1 $\rightarrow$ Aisle 2 Bay 1 $\rightarrow$ Bay 2...), then U-turns into the next pair from the back of the warehouse.
+                  <p className="text-[11px] text-slate-400 leading-relaxed mb-2">
+                    Traverses corridor pairs or single-aisle odd/even corridors, alternating sides bay-by-bay to minimize reach travel, with serpentine U-turns across adjacent aisles.
                   </p>
+                  <div className="text-[10px] bg-slate-900 p-2 rounded border border-slate-800 space-y-1">
+                    <div className="text-violet-300 font-semibold">• E-Aisles (E17–E01 Paired Corridors):</div>
+                    <div className="text-slate-400">E16 (Left rack Bay 1) $\rightarrow$ E17 (Right rack Bay 1) $\rightarrow$ Bay 2 $\rightarrow$ ... $\rightarrow$ U-turn at back into E14/E15 (Bay 72 $\rightarrow$ 1).</div>
+                    <div className="text-fuchsia-300 font-semibold mt-1.5">• A-Aisles (AV–AK Single Aisle Odd/Even):</div>
+                    <div className="text-slate-400">Inside single aisle AV: Odd bays on Left, Even bays on Right. Traversal: Bay 1 (Left) $\rightarrow$ Bay 2 (Right) $\rightarrow$ Bay 3 (Left) $\rightarrow$ Bay 4 (Right) ... U-turn into AU from back (Bay 71/72 $\rightarrow$ 1/2)!</div>
+                  </div>
                 </div>
                 <div className="p-3 bg-black/40 border border-[#334155] rounded-lg">
                   <div className="text-fuchsia-400 font-bold mb-1">2. Putaway Sequence (`PUT_SEQUENCE`)</div>
@@ -1230,7 +1425,8 @@ export default function App() {
                 <thead>
                   <tr className="bg-[#0f172a] text-slate-400 border-b border-[#334155]">
                     <th className="p-3">On</th>
-                    <th className="p-3">Left Rack</th>
+                    <th className="p-3">Mode</th>
+                    <th className="p-3">Left Rack / Aisle</th>
                     <th className="p-3">Right Rack</th>
                     <th className="p-3">From Bay</th>
                     <th className="p-3">To Bay</th>
@@ -1240,53 +1436,77 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1e293b]">
-                  {passes.map((pass, i) => (
-                    <tr key={pass.id} className="hover:bg-white/5 transition">
-                      <td className="p-3">
-                        <input type="checkbox" checked={pass.on} onChange={e => { const np = [...passes]; np[i].on = e.target.checked; setPasses(np); }} className="w-4 h-4 rounded accent-violet-500" />
-                      </td>
-                      <td className="p-3">
-                        <input type="text" value={pass.leftRack} onChange={e => { const np = [...passes]; np[i].leftRack = e.target.value.toUpperCase(); setPasses(np); }} className="w-20 bg-black border border-[#334155] rounded p-1 text-white outline-none" />
-                      </td>
-                      <td className="p-3">
-                        <input type="text" value={pass.rightRack} onChange={e => { const np = [...passes]; np[i].rightRack = e.target.value.toUpperCase(); setPasses(np); }} className="w-20 bg-black border border-[#334155] rounded p-1 text-white outline-none" />
-                      </td>
-                      <td className="p-3">
-                        <input type="number" value={pass.fromBay} onChange={e => { const np = [...passes]; np[i].fromBay = parseInt(e.target.value)||1; setPasses(np); }} className="w-16 bg-black border border-[#334155] rounded p-1 text-white outline-none" />
-                      </td>
-                      <td className="p-3">
-                        <input type="number" value={pass.toBay} onChange={e => { const np = [...passes]; np[i].toBay = parseInt(e.target.value)||1; setPasses(np); }} className="w-16 bg-black border border-[#334155] rounded p-1 text-white outline-none" />
-                      </td>
-                      <td className="p-3">
-                        <select value={pass.levelDirection} onChange={e => { const np = [...passes]; np[i].levelDirection = e.target.value as any; setPasses(np); }} className="bg-black border border-[#334155] rounded p-1 text-white outline-none">
-                          <option value="up">A to Top</option>
-                          <option value="down">Top to A</option>
-                        </select>
-                      </td>
-                      <td className="p-3">
-                        <select value={pass.bayFilter} onChange={e => { const np = [...passes]; np[i].bayFilter = e.target.value as any; setPasses(np); }} className="bg-black border border-[#334155] rounded p-1 text-white outline-none">
-                          <option value="all">All</option>
-                          <option value="even">Even Only</option>
-                          <option value="odd">Odd Only</option>
-                        </select>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex gap-2">
-                          <button onClick={() => { if(i>0) { const np=[...passes]; [np[i-1], np[i]] = [np[i], np[i-1]]; setPasses(np); } }} className="text-slate-400 hover:text-white">↑</button>
-                          <button onClick={() => { if(i<passes.length-1) { const np=[...passes]; [np[i+1], np[i]] = [np[i], np[i+1]]; setPasses(np); } }} className="text-slate-400 hover:text-white">↓</button>
-                          <button onClick={() => setPasses(passes.filter((_, idx) => idx !== i))} className="text-rose-400 hover:text-rose-300"><Trash2 className="w-4 h-4"/></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {passes.map((pass, i) => {
+                    const isSingle = pass.mode === 'single';
+                    return (
+                      <tr key={pass.id} className="hover:bg-white/5 transition">
+                        <td className="p-3">
+                          <input type="checkbox" checked={pass.on} onChange={e => { const np = [...passes]; np[i].on = e.target.checked; setPasses(np); }} className="w-4 h-4 rounded accent-violet-500" />
+                        </td>
+                        <td className="p-3">
+                          <select value={pass.mode || 'paired'} onChange={e => { const np = [...passes]; np[i].mode = e.target.value as any; setPasses(np); }} className="bg-black border border-[#334155] rounded p-1 text-[11px] text-white outline-none">
+                            <option value="paired">Paired Racks</option>
+                            <option value="single">Single Aisle (Odd=L / Even=R)</option>
+                          </select>
+                        </td>
+                        <td className="p-3">
+                          <input type="text" value={pass.leftRack} onChange={e => { const np = [...passes]; np[i].leftRack = e.target.value.toUpperCase(); setPasses(np); }} placeholder={isSingle ? "Aisle (e.g. AV)" : "Left Rack"} className="w-24 bg-black border border-[#334155] rounded p-1 text-white outline-none font-bold" />
+                        </td>
+                        <td className="p-3">
+                          {isSingle ? (
+                            <span className="text-[11px] text-violet-400 font-mono italic">Odd=Left, Even=Right</span>
+                          ) : (
+                            <input type="text" value={pass.rightRack} onChange={e => { const np = [...passes]; np[i].rightRack = e.target.value.toUpperCase(); setPasses(np); }} placeholder="Right Rack" className="w-24 bg-black border border-[#334155] rounded p-1 text-white outline-none font-bold" />
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <input type="number" value={pass.fromBay} onChange={e => { const np = [...passes]; np[i].fromBay = parseInt(e.target.value)||1; setPasses(np); }} className="w-16 bg-black border border-[#334155] rounded p-1 text-white outline-none" />
+                        </td>
+                        <td className="p-3">
+                          <input type="number" value={pass.toBay} onChange={e => { const np = [...passes]; np[i].toBay = parseInt(e.target.value)||1; setPasses(np); }} className="w-16 bg-black border border-[#334155] rounded p-1 text-white outline-none" />
+                        </td>
+                        <td className="p-3">
+                          <select value={pass.levelDirection} onChange={e => { const np = [...passes]; np[i].levelDirection = e.target.value as any; setPasses(np); }} className="bg-black border border-[#334155] rounded p-1 text-white outline-none">
+                            <option value="up">A to Top</option>
+                            <option value="down">Top to A</option>
+                          </select>
+                        </td>
+                        <td className="p-3">
+                          <select value={pass.bayFilter} onChange={e => { const np = [...passes]; np[i].bayFilter = e.target.value as any; setPasses(np); }} className="bg-black border border-[#334155] rounded p-1 text-white outline-none">
+                            <option value="all">All</option>
+                            <option value="even">Even Only</option>
+                            <option value="odd">Odd Only</option>
+                          </select>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex gap-2">
+                            <button onClick={() => { if(i>0) { const np=[...passes]; [np[i-1], np[i]] = [np[i], np[i-1]]; setPasses(np); } }} className="text-slate-400 hover:text-white" title="Move Up">↑</button>
+                            <button onClick={() => { if(i<passes.length-1) { const np=[...passes]; [np[i+1], np[i]] = [np[i], np[i+1]]; setPasses(np); } }} className="text-slate-400 hover:text-white" title="Move Down">↓</button>
+                            <button onClick={() => setPasses(passes.filter((_, idx) => idx !== i))} className="text-rose-400 hover:text-rose-300" title="Delete Pass"><Trash2 className="w-4 h-4"/></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               
-              <div className="p-4 border-t border-[#334155] flex justify-between">
-                <button onClick={() => setPasses([...passes, { id: Date.now().toString(), on: true, leftRack: '', rightRack: '', fromBay: 1, toBay: 64, levelDirection: 'up', bayFilter: 'all' }])} className="px-3 py-1.5 bg-[#334155] hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition">
-                  <Plus className="w-3.5 h-3.5" /> Add Pass
-                </button>
-                <button onClick={applyPassesToLocations} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-lg shadow-lg shadow-amber-500/20 transition">
+              <div className="p-4 border-t border-[#334155] flex flex-wrap gap-2 justify-between items-center bg-[#0f172a]">
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => setPasses([...passes, { id: Date.now().toString(), on: true, mode: 'paired', leftRack: '', rightRack: '', fromBay: 1, toBay: 72, levelDirection: 'up', bayFilter: 'all' }])} className="px-3 py-1.5 bg-[#334155] hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition">
+                    <Plus className="w-3.5 h-3.5" /> Add Paired Pass
+                  </button>
+                  <button onClick={() => setPasses([...passes, { id: Date.now().toString(), on: true, mode: 'single', leftRack: 'AV', rightRack: '', fromBay: 1, toBay: 72, levelDirection: 'up', bayFilter: 'all' }])} className="px-3 py-1.5 bg-violet-600/30 border border-violet-500 hover:bg-violet-600/50 text-violet-200 text-xs font-bold rounded-lg flex items-center gap-1.5 transition">
+                    <Plus className="w-3.5 h-3.5" /> Add Single Aisle (Odd/Even)
+                  </button>
+                  <button onClick={loadPresetDc4Aisles} className="px-3 py-1.5 bg-violet-950/60 border border-violet-500/40 hover:bg-violet-900/60 text-violet-300 text-xs font-bold rounded-lg transition" title="Load serpentine route for AV down to AK">
+                    Preset: DC4 AV–AK (Serpentine)
+                  </button>
+                  <button onClick={loadPresetDc4EAisles} className="px-3 py-1.5 bg-fuchsia-950/60 border border-fuchsia-500/40 hover:bg-fuchsia-900/60 text-fuchsia-300 text-xs font-bold rounded-lg transition" title="Load corridors for E17 down to E01">
+                    Preset: DC4 E-Aisles (E17–E01)
+                  </button>
+                </div>
+                <button onClick={applyPassesToLocations} className="px-4 py-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-400 hover:to-fuchsia-400 text-white font-extrabold text-xs rounded-lg shadow-lg shadow-violet-500/25 transition">
                   Apply Passes & Sequence Data
                 </button>
               </div>
